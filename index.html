@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Cost Price Calculator — v2.3.3</title>
+  <title>Cost Price Calculator — v2.5</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     :root { --bg:#f7f8fc; --fg:#0f172a; --muted:#475569; --card:#ffffff; --border:#e2e8f0; --accent:#0ea5e9; }
@@ -37,12 +37,13 @@
     .danger{color:#7f1d1d}
     footer{margin:28px 0;color:var(--muted);text-align:center;font-size:12px}
     .error{background:#fee2e2;border:1px solid #fecaca;color:#7f1d1d;border-radius:10px;padding:8px;margin-top:10px;display:none}
+    .hidden{display:none!important}
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1 class="h1">Cost Price Calculator</h1>
-    <div class="version">v2.3.3 — Fragt øverst • RRP & margin</div>
+    <div class="version">v2.5 — Fragt med samlet antal • Linjeantal som valgfri toggle</div>
 
     <div id="err" class="error"></div>
 
@@ -58,6 +59,10 @@
           <label for="freightCcy">Fragt valuta</label>
           <select id="freightCcy"></select>
         </div>
+        <div style="min-width:220px">
+          <label for="unitsOverride">Samlet antal enheder</label>
+          <input id="unitsOverride" type="text" inputmode="numeric" placeholder="fx 250">
+        </div>
         <div class="small" id="freightInfo">Fordeles ligeligt pr. stk og lægges i kostprisen (DKK).</div>
       </div>
     </section>
@@ -68,6 +73,7 @@
         <h2>Varelinjer</h2>
         <div class="row">
           <button class="btn" id="addRow">+ Tilføj linje</button>
+          <label class="small"><input id="togglePerLineQty" type="checkbox"> Rediger antal pr. linje</label>
           <label class="small"><input id="togglePerLineCcy" type="checkbox"> Rediger valuta pr. linje</label>
         </div>
       </div>
@@ -78,7 +84,7 @@
             <tr>
               <th style="width:32px">#</th>
               <th>Beskrivelse</th>
-              <th style="width:90px">Antal</th>
+              <th style="width:90px" id="colQty">Antal</th>
               <th style="width:130px" id="colCost">Kostpris</th>
               <th class="ccy-col" style="width:120px; display:none">Kostpris valuta</th>
               <th style="width:150px" id="colRrpSug">Forslået RRP</th>
@@ -90,7 +96,9 @@
           <tbody></tbody>
         </table>
       </div>
-      <div class="small" id="itemsInfo" style="margin-top:8px">Fragt er inkluderet i kostprisen (landed) og vises på linjeniveau.</div>
+      <div class="small" id="itemsInfo" style="margin-top:8px">
+        Fragt er inkluderet i kostprisen (landed) og vises på linjeniveau.
+      </div>
     </section>
 
     <!-- Stats -->
@@ -246,7 +254,7 @@
       tr.innerHTML = `
         <td>${idx}</td>
         <td><input class="desc" type="text" placeholder="Beskrivelse" value="${(prefill.description||'').replace(/"/g,'&quot;')}"></td>
-        <td><input class="qty" type="text" inputmode="numeric" placeholder="0" value="${prefill.qty||''}"></td>
+        <td class="qty-col"><input class="qty" type="text" inputmode="numeric" placeholder="0" value="${prefill.qty||''}"></td>
         <td><input class="price" type="text" inputmode="decimal" placeholder="0,00" value="${prefill.unitPrice||''}"></td>
         <td class="ccy-col" style="display:none"><select class="ccy"></select></td>
         <td class="rrp-sug num">-</td>
@@ -256,6 +264,7 @@
       tbody.appendChild(tr);
       const ccySel = tr.querySelector('.ccy');
       if (ccySel){ ccySel.innerHTML = Object.keys(rates).map(ccy => `<option value="${ccy}">${ccy}</option>`).join(''); ccySel.value = prefill.ccy || qs('#costCcy').value || 'EUR'; }
+      applyQtyVisibility(tr);
       recalcRow(tr);
     }
 
@@ -272,6 +281,29 @@
 
     const fmtCcy = (x, ccy) => isNaN(x) ? '-' : x.toLocaleString('da-DK', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ' + ccy;
 
+    function totalUnitsForFreight(){
+      const useLineQty = qs('#togglePerLineQty').checked;
+      if (useLineQty){
+        const rows = collectRows();
+        return rows.reduce((s,r)=> s + (isFinite(r.qty)?r.qty:0), 0);
+      }
+      const overrideUnits = toNumber(qs('#unitsOverride').value);
+      return isFinite(overrideUnits) && overrideUnits>0 ? overrideUnits : 0;
+    }
+
+    function freightPerUnitDKK(){
+      const divisor = totalUnitsForFreight();
+      const freightCcy = qs('#freightCcy').value;
+      const freightAmt = toNumber(qs('#freightAmount').value) || 0;
+      const freightDKK = (rates[freightCcy]||0) * freightAmt;
+      const per = divisor>0 ? freightDKK / divisor : 0;
+      const info = qs('#freightInfo');
+      if (info){
+        info.textContent = `Fordeles ligeligt på ${divisor||0} enheder → ${fmtDKK(per)} pr. stk og lægges i kostprisen (DKK).`;
+      }
+      return per;
+    }
+
     function recalcRow(tr){
       try{
         clearErr();
@@ -281,15 +313,8 @@
         const pretty = qs('#pretty').checked;
         const rrpCcy = qs('#rrpCcy').value;
 
-        const rows = collectRows();
-        const totalUnits = rows.reduce((s,r)=> s + (isFinite(r.qty)?r.qty:0), 0);
+        const freightPerUnit = freightPerUnitDKK();
 
-        const freightCcy = qs('#freightCcy').value;
-        const freightAmt = toNumber(qs('#freightAmount').value) || 0;
-        const freightDKK = (rates[freightCcy]||0) * freightAmt;
-        const freightPerUnit = totalUnits>0 ? freightDKK / totalUnits : 0;
-
-        const qty = toNumber(tr.querySelector('.qty')?.value) || 0;
         const unitPrice = toNumber(tr.querySelector('.price')?.value) || 0;
         const ccy = (qs('#togglePerLineCcy').checked ? (tr.querySelector('.ccy')?.value||'') : qs('#costCcy').value);
         const rrpInput = toNumber(tr.querySelector('.rrp')?.value);
@@ -333,30 +358,28 @@
     }
 
     function recalcAll(){ qsa('#items tbody tr').forEach(tr => recalcRow(tr)); updateHeaders(); }
+
     function updateStats(){
       const rows = collectRows();
-      const totalUnits = rows.reduce((s,r)=> s + (isFinite(r.qty)?r.qty:0), 0);
-      const freightAmt = toNumber(qs('#freightAmount').value) || 0;
-      const freightCcy = qs('#freightCcy').value;
-      const freightDKK = (rates[freightCcy]||0) * freightAmt;
-      const freightPerUnit = totalUnits>0 ? freightDKK / totalUnits : 0;
+      const divisor = totalUnitsForFreight();
+      const per = freightPerUnitDKK();
       let sumLanded = 0, sumExVatDKK = 0, sumQty = 0, markup = toNumber(qs('#markup').value)||3, dutyRate = (toNumber(qs('#dutyPct').value)||0)/100;
       rows.forEach(r => {
         const unitCostDKK = (r.unitPrice||0) * (rates[r.ccy]||0);
         const duty = (r.ccy==='JPY') ? unitCostDKK * dutyRate : 0;
-        const landed = unitCostDKK + duty + (totalUnits>0 ? freightPerUnit : 0);
-        sumLanded += landed * (r.qty||0);
-        sumQty += (r.qty||0);
+        const landed = unitCostDKK + duty + per;
+        sumLanded += landed * (isFinite(r.qty)?(qs('#togglePerLineQty').checked ? r.qty : 1): (qs('#togglePerLineQty').checked ? 0 : 1));
+        sumQty += (qs('#togglePerLineQty').checked ? (isFinite(r.qty)?r.qty:0) : 1);
         const exVatDKK = (landed * markup);
-        sumExVatDKK += exVatDKK * (r.qty||0);
+        sumExVatDKK += exVatDKK * (qs('#togglePerLineQty').checked ? (isFinite(r.qty)?r.qty:0) : 1);
       });
-      const avgLanded = sumQty>0 ? (sumLanded / sumQty) : NaN;
+      const q1 = qs('#statQty'); if (q1) q1.textContent = divisor>0 ? divisor : (qs('#togglePerLineQty').checked ? sumQty : '-');
+      const avgLanded = (qs('#togglePerLineQty').checked ? (sumQty>0 && sumLanded>0 ? sumLanded/sumQty : NaN) : NaN);
       const marginTotal = sumExVatDKK - sumLanded;
       const marginPct = sumExVatDKK>0 ? (marginTotal/sumExVatDKK)*100 : NaN;
-      const q1 = qs('#statQty'); if (q1) q1.textContent = sumQty>0 ? sumQty : '-';
-      const q2 = qs('#statFreightPer'); if (q2) q2.textContent = isNaN(freightPerUnit)? '-' : fmtDKK(freightPerUnit);
+      const q2 = qs('#statFreightPer'); if (q2) q2.textContent = isNaN(per)? '-' : fmtDKK(per);
       const q3 = qs('#statAvgLanded'); if (q3) q3.textContent = isNaN(avgLanded)? '-' : fmtDKK(avgLanded);
-      const q4 = qs('#statMargin'); if (q4) q4.textContent = sumQty>0 ? `${fmtDKK(marginTotal)} (${isNaN(marginPct)?'-':marginPct.toFixed(1)}%)` : '-';
+      const q4 = qs('#statMargin'); if (q4) q4.textContent = (sumQty>0 || !qs('#togglePerLineQty').checked) ? `${fmtDKK(marginTotal)} (${isNaN(marginPct)?'-':marginPct.toFixed(1)}%)` : '-';
     }
 
     function updateHeaders(){
@@ -365,6 +388,16 @@
       const a = qs('#colCost'); if (a) a.textContent = `Kostpris (${costCcy})`;
       const b = qs('#colRrpSug'); if (b) b.textContent = `Forslået RRP (${rrpCcy})`;
       const c = qs('#colRrp'); if (c) c.textContent = `Din RRP (${rrpCcy})`;
+      const qtyHead = qs('#colQty');
+      if (qtyHead) qtyHead.classList.toggle('hidden', !qs('#togglePerLineQty').checked);
+      // hide/show qty inputs per row
+      qsa('#items tbody tr').forEach(applyQtyVisibility);
+    }
+
+    function applyQtyVisibility(tr){
+      const useLineQty = qs('#togglePerLineQty').checked;
+      const cell = tr.querySelector('.qty-col');
+      if (cell) cell.classList.toggle('hidden', !useLineQty);
     }
 
     (function init(){
@@ -372,12 +405,12 @@
         ['#costCcy','#rrpCcy','#freightCcy'].forEach(sel => buildCurrencySelect(qs(sel)));
         qs('#costCcy').value='JPY'; qs('#rrpCcy').value='DKK'; qs('#freightCcy').value='JPY';
         renderFxTable();
-        refreshFx();
         addRow();
+        refreshFx();
         // events
         qs('#addRow').addEventListener('click', ()=> addRow());
-        ['#markup','#dutyPct','#pretty','#costCcy','#rrpCcy','#togglePerLineCcy','#freightAmount','#freightCcy'].forEach(id=>{
-          const el = qs(id); ['input','change','keyup'].forEach(evt => el.addEventListener(evt, recalcAll));
+        ['#markup','#dutyPct','#pretty','#costCcy','#rrpCcy','#togglePerLineCcy','#freightAmount','#freightCcy','#unitsOverride','#togglePerLineQty'].forEach(id=>{
+          const el = qs(id); ['input','change','keyup'].forEach(evt => el.addEventListener(evt, ()=>{ updateHeaders(); recalcAll(); }));
         });
         qs('#refreshFx').addEventListener('click', refreshFx);
         qs('#items').addEventListener('input', (e)=>{
