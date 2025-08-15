@@ -3,22 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Cost Price Calculator — v2.7</title>
+  <title>Cost Price Calculator — v2.8</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
-    :root { --bg:#f7f8fc; --fg:#0f172a; --muted:#475569; --card:#ffffff; --border:#e2e8f0; --accent:#0ea5e9; --accent2:#22c55e; }
+    :root { --bg:#f7f8fc; --fg:#0f172a; --muted:#475569; --card:#ffffff; --border:#e2e8f0; --accent:#0ea5e9; }
     html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;line-height:1.35}
     .wrap{max-width:1200px;margin:28px auto;padding:0 16px}
     .h1{font-size:28px;font-weight:700;margin:0}
     .version{color:var(--muted);font-size:12px;margin-top:4px}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.03); overflow:hidden}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
     .step{margin-top:14px}
     .step h2{font-size:18px;margin:0 0 10px}
     .row{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
     label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px}
     input[type=text], select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px}
     input:focus, select:focus{border-color:#cbd5e1; box-shadow:0 0 0 3px rgba(148,163,184,.2); outline:none}
-    .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:#fff;cursor:pointer}
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--border);border-radius:10px;background:#fff;cursor:pointer}
     .btn:hover{background:#f8fafc}
     table{width:100%;border-collapse:collapse}
     th, td{border-bottom:1px solid var(--border);padding:8px;vertical-align:top}
@@ -31,10 +31,10 @@
     .stat .v{font-size:18px;font-weight:600;margin-top:4px}
     .ok{color:#065f46}
     .danger{color:#7f1d1d}
-    .pill{display:inline-flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;border:1px solid var(--border); background:#ecfeff}
-    .pill .label{font-size:12px;color:#0369a1}
+    .pill{display:inline-flex;align-items:center;gap:10px;padding:8px 10px;border-radius:12px;border:1px dashed #94a3b8; background:#f8fafc}
+    .pill .label{font-size:12px;color:#334155}
     .pill .value{font-weight:700}
-    .copy{cursor:pointer;border:1px dashed #94a3b8;padding:4px 8px;border-radius:8px;font-size:12px}
+    .copy{cursor:pointer;border:1px solid #cbd5e1;padding:4px 8px;border-radius:8px;font-size:12px}
     .copy:active{opacity:.7}
     .hidden{display:none!important}
     footer{margin:28px 0;color:var(--muted);text-align:center;font-size:12px}
@@ -44,7 +44,7 @@
 <body>
   <div class="wrap">
     <h1 class="h1">Cost Price Calculator</h1>
-    <div class="version">v2.7 — Told pr. linje • Total told • Shopify kost (DKK)</div>
+    <div class="version">v2.8 — Told i alt i oversigt • RRP kopier • Shopify kostpris til højre</div>
 
     <div id="err" class="error"></div>
 
@@ -88,25 +88,18 @@
               <th style="width:90px" id="colQty">Antal</th>
               <th style="width:130px" id="colCost">Kostpris</th>
               <th class="ccy-col" style="width:120px; display:none">Kostpris valuta</th>
-              <th style="width:160px">Shopify kost (DKK)</th>
               <th style="width:150px" id="colRrpSug">Forslået RRP</th>
               <th style="width:150px" id="colRrp">Din RRP</th>
-              <th style="width:340px">Oversigt</th>
+              <th style="width:320px">Oversigt</th>
+              <th style="width:200px">Shopify kostpris (DKK)</th>
               <th style="width:40px"></th>
             </tr>
           </thead>
           <tbody></tbody>
         </table>
       </div>
-
-      <!-- NEW: Total duty just below items -->
-      <div class="stat" id="totalDutyCard" style="margin-top:12px">
-        <div class="t">Told i alt (DKK)</div>
-        <div class="v" id="totalDutyVal">-</div>
-      </div>
-
       <div class="small" id="itemsInfo" style="margin-top:8px">
-        Fragt er inkluderet i kostprisen (landed) og vises på linjeniveau. “Shopify kost (DKK)” er den pris du kan sætte som kostpris i Shopify.
+        Fragt og evt. told er inkluderet i kostprisen (landed). “Shopify kostpris (DKK)” kan kopieres direkte til Shopify.
       </div>
     </section>
 
@@ -115,7 +108,7 @@
       <div class="stat"><div class="t">Antal i alt</div><div class="v" id="statQty">-</div></div>
       <div class="stat"><div class="t">Fragt pr. stk (DKK)</div><div class="v" id="statFreightPer">-</div></div>
       <div class="stat"><div class="t">Gns. kost (DKK, inkl. fragt)</div><div class="v" id="statAvgLanded">-</div></div>
-      <div class="stat"><div class="t">DB i alt</div><div class="v" id="statMargin">-</div></div>
+      <div class="stat"><div class="t">Told i alt (DKK)</div><div class="v" id="statDuty">-</div></div>
     </section>
 
     <!-- Settings -->
@@ -181,13 +174,9 @@
     }
     const fmt = (n, d=2) => isNaN(n) ? '-' : n.toLocaleString('da-DK', {minimumFractionDigits:d, maximumFractionDigits:d});
     const fmtDKK = (n) => isNaN(n) ? '-' : n.toLocaleString('da-DK', {style:'currency', currency:'DKK'});
-    function prettyVal(x){
+    function roundUpTo99(x){
       if (!isFinite(x) || x<=0) return x;
-      const k = Math.floor(Math.log10(x));
-      const base = Math.pow(10, Math.max(2, k));
-      const c1 = Math.max(99, Math.floor(x/base)*base - 1);
-      const c2 = Math.max(99, Math.floor(x/base+1)*base - 1);
-      return (Math.abs(c1 - x) <= Math.abs(c2 - x)) ? c1 : c2;
+      return Math.ceil(x/100)*100 - 1; // always up to the next 99
     }
 
     const defaultRates = { DKK:1, EUR:7.45, JPY:0.046, USD:6.8, GBP:8.7, SEK:0.65, NOK:0.66, CNY:0.95 };
@@ -267,16 +256,25 @@
         <td class="qty-col"><input class="qty" type="text" inputmode="numeric" placeholder="0" value="${prefill.qty||''}"></td>
         <td><input class="price" type="text" inputmode="decimal" placeholder="0,00" value="${prefill.unitPrice||''}"></td>
         <td class="ccy-col" style="display:none"><select class="ccy"></select></td>
-        <td class="shopify-cost"><span class="pill"><span class="label">Shopify kost</span><span class="value">-</span><span class="copy">Kopiér</span></span></td>
-        <td class="rrp-sug num">-</td>
-        <td><input class="rrp" type="text" inputmode="decimal" placeholder=""></td>
+        <td class="rrp-sug num"><span class="pill"><span class="label">Forslag</span><span class="value">-</span><button class="copy">Kopiér</button></span></td>
+        <td><div class="row" style="gap:8px"><input class="rrp" type="text" inputmode="decimal" placeholder=""><button class="copy copy-rrp">Kopiér</button></div></td>
         <td class="margin num small">-<div class="small freightShare">Fragt pr. stk: -</div></td>
+        <td class="shopify-cost"><span class="pill"><span class="label">Shopify kostpris</span><span class="value">-</span><button class="copy">Kopiér</button></span></td>
         <td><button class="btn del">×</button></td>`;
       tbody.appendChild(tr);
       const ccySel = tr.querySelector('.ccy');
       if (ccySel){ ccySel.innerHTML = Object.keys(rates).map(ccy => `<option value="${ccy}">${ccy}</option>`).join(''); ccySel.value = prefill.ccy || qs('#costCcy').value || 'EUR'; }
+      // copy handlers
       tr.querySelector('.shopify-cost .copy').addEventListener('click', ()=>{
         const val = tr.querySelector('.shopify-cost .value')?.textContent || '';
+        if (val) { navigator.clipboard.writeText(val.replace(/[^0-9,.-]/g,'')); }
+      });
+      tr.querySelector('.rrp-sug .copy').addEventListener('click', ()=>{
+        const val = tr.querySelector('.rrp-sug .value')?.textContent || '';
+        if (val) { navigator.clipboard.writeText(val.replace(/[^0-9,.-]/g,'')); }
+      });
+      tr.querySelector('.copy-rrp').addEventListener('click', ()=>{
+        const val = tr.querySelector('.rrp')?.value || '';
         if (val) { navigator.clipboard.writeText(val.replace(/[^0-9,.-]/g,'')); }
       });
       applyQtyVisibility(tr);
@@ -339,22 +337,22 @@
         const duty = (ccy==='JPY') ? unitCostDKK * dutyRate : 0;
         const landed = unitCostDKK + duty + freightPerUnit;
 
-        // Shopify cost pill
+        // Shopify cost pill (landed cost, DKK, ex VAT)
         const shop = tr.querySelector('.shopify-cost .value');
         if (shop) shop.textContent = fmtDKK(landed);
 
-        // Freight share display
+        // Freight share
         const fs = tr.querySelector('.freightShare'); if (fs) fs.textContent = `Fragt pr. stk: ${fmtDKK(freightPerUnit)}`;
 
         // RRP suggestion in chosen currency
         const rrpRate = rates[rrpCcy] || 1;
         const rrpExVatDKK = landed * markup;
         const rrpInclVatDKK = rrpExVatDKK * 1.25;
-        const rrpInclVatInCcyRaw = rrpInclVatDKK / rrpRate;
-        const rrpSuggestedInCcy = pretty ? prettyVal(rrpInclVatInCcyRaw) : rrpInclVatInCcyRaw;
-        const sug = tr.querySelector('.rrp-sug'); if (sug) sug.textContent = fmtCcy(rrpSuggestedInCcy, rrpCcy);
+        let rrpInclVatInCcyRaw = rrpInclVatDKK / rrpRate;
+        if (pretty) rrpInclVatInCcyRaw = roundUpTo99(rrpInclVatInCcyRaw); // round UP to next 99
+        const sugVal = tr.querySelector('.rrp-sug .value'); if (sugVal) sugVal.textContent = fmtCcy(rrpInclVatInCcyRaw, rrpCcy);
 
-        const rrpInclVatInCcy = (isFinite(rrpInput)&&rrpInput>0) ? rrpInput : rrpSuggestedInCcy;
+        const rrpInclVatInCcy = (isFinite(rrpInput)&&rrpInput>0) ? rrpInput : rrpInclVatInCcyRaw;
         const rrpInclVatDKK2 = rrpInclVatInCcy * rrpRate;
         const exVatCcy = rrpInclVatInCcy / 1.25;
         const vatCcy = rrpInclVatInCcy - exVatCcy;
@@ -415,9 +413,7 @@
         const exVatDKK = landed * markup;
         sumExVatDKK += exVatDKK * q;
       });
-      const marginTotal = sumExVatDKK - sumLanded;
-      const marginPct = sumExVatDKK>0 ? (marginTotal/sumExVatDKK)*100 : NaN;
-      return { divisor, per, sumLanded, sumExVatDKK, sumQty, sumDuty, marginTotal, marginPct };
+      return { divisor, per, sumLanded, sumExVatDKK, sumQty, sumDuty };
     }
 
     function updateTotals(){
@@ -425,8 +421,7 @@
       const elQty = qs('#statQty'); if (elQty) elQty.textContent = t.divisor>0 ? t.divisor : (qs('#togglePerLineQty').checked ? t.sumQty : '-');
       const elFreight = qs('#statFreightPer'); if (elFreight) elFreight.textContent = isNaN(t.per)? '-' : fmtDKK(t.per);
       const elAvg = qs('#statAvgLanded'); if (elAvg) elAvg.textContent = (t.sumQty>0 ? fmtDKK(t.sumLanded/t.sumQty) : '-');
-      const elMargin = qs('#statMargin'); if (elMargin) elMargin.textContent = (t.sumQty>0 ? `${fmtDKK(t.marginTotal)} (${isNaN(t.marginPct)?'-':t.marginPct.toFixed(1)}%)` : '-');
-      const dutyCard = qs('#totalDutyVal'); if (dutyCard) dutyCard.textContent = fmtDKK(t.sumDuty);
+      const elDuty = qs('#statDuty'); if (elDuty) elDuty.textContent = fmtDKK(t.sumDuty);
     }
 
     (function init(){
