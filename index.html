@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Cost Price Calculator — v2.5</title>
+  <title>Cost Price Calculator — v2.7</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
-    :root { --bg:#f7f8fc; --fg:#0f172a; --muted:#475569; --card:#ffffff; --border:#e2e8f0; --accent:#0ea5e9; }
+    :root { --bg:#f7f8fc; --fg:#0f172a; --muted:#475569; --card:#ffffff; --border:#e2e8f0; --accent:#0ea5e9; --accent2:#22c55e; }
     html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;line-height:1.35}
-    .wrap{max-width:1120px;margin:28px auto;padding:0 16px}
+    .wrap{max-width:1200px;margin:28px auto;padding:0 16px}
     .h1{font-size:28px;font-weight:700;margin:0}
     .version{color:var(--muted);font-size:12px;margin-top:4px}
     .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.03); overflow:hidden}
@@ -18,32 +18,33 @@
     label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px}
     input[type=text], select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px}
     input:focus, select:focus{border-color:#cbd5e1; box-shadow:0 0 0 3px rgba(148,163,184,.2); outline:none}
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:#fff;cursor:pointer}
+    .btn:hover{background:#f8fafc}
     table{width:100%;border-collapse:collapse}
     th, td{border-bottom:1px solid var(--border);padding:8px;vertical-align:top}
     th{font-size:12px;color:var(--muted);text-align:left}
+    .small{font-size:12px;color:var(--muted)}
     .statgrid{display:grid;gap:12px;margin-top:12px}
     @media(min-width:900px){.statgrid{grid-template-columns:repeat(4,1fr)}}
     .stat{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px}
     .stat .t{font-size:12px;color:var(--muted)}
     .stat .v{font-size:18px;font-weight:600;margin-top:4px}
-    .small{font-size:12px;color:var(--muted)}
-    details.settings{margin-top:12px}
-    details.settings>summary{cursor:pointer;font-weight:600}
-    .boxgrid{display:grid;gap:12px;margin-top:10px}
-    @media(min-width:900px){.boxgrid{grid-template-columns:repeat(3,1fr)}}
-    .ibox{border:1px solid var(--border);border-radius:12px;padding:12px}
-    .num{font-variant-numeric: tabular-nums}
     .ok{color:#065f46}
     .danger{color:#7f1d1d}
+    .pill{display:inline-flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;border:1px solid var(--border); background:#ecfeff}
+    .pill .label{font-size:12px;color:#0369a1}
+    .pill .value{font-weight:700}
+    .copy{cursor:pointer;border:1px dashed #94a3b8;padding:4px 8px;border-radius:8px;font-size:12px}
+    .copy:active{opacity:.7}
+    .hidden{display:none!important}
     footer{margin:28px 0;color:var(--muted);text-align:center;font-size:12px}
     .error{background:#fee2e2;border:1px solid #fecaca;color:#7f1d1d;border-radius:10px;padding:8px;margin-top:10px;display:none}
-    .hidden{display:none!important}
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1 class="h1">Cost Price Calculator</h1>
-    <div class="version">v2.5 — Fragt med samlet antal • Linjeantal som valgfri toggle</div>
+    <div class="version">v2.7 — Told pr. linje • Total told • Shopify kost (DKK)</div>
 
     <div id="err" class="error"></div>
 
@@ -87,26 +88,34 @@
               <th style="width:90px" id="colQty">Antal</th>
               <th style="width:130px" id="colCost">Kostpris</th>
               <th class="ccy-col" style="width:120px; display:none">Kostpris valuta</th>
+              <th style="width:160px">Shopify kost (DKK)</th>
               <th style="width:150px" id="colRrpSug">Forslået RRP</th>
               <th style="width:150px" id="colRrp">Din RRP</th>
-              <th style="width:260px">Oversigt</th>
+              <th style="width:340px">Oversigt</th>
               <th style="width:40px"></th>
             </tr>
           </thead>
           <tbody></tbody>
         </table>
       </div>
+
+      <!-- NEW: Total duty just below items -->
+      <div class="stat" id="totalDutyCard" style="margin-top:12px">
+        <div class="t">Told i alt (DKK)</div>
+        <div class="v" id="totalDutyVal">-</div>
+      </div>
+
       <div class="small" id="itemsInfo" style="margin-top:8px">
-        Fragt er inkluderet i kostprisen (landed) og vises på linjeniveau.
+        Fragt er inkluderet i kostprisen (landed) og vises på linjeniveau. “Shopify kost (DKK)” er den pris du kan sætte som kostpris i Shopify.
       </div>
     </section>
 
     <!-- Stats -->
     <section class="statgrid">
-      <div class="stat"><div class="t">Antal i alt</div><div class="v num" id="statQty">-</div></div>
-      <div class="stat"><div class="t">Fragt pr. stk (DKK)</div><div class="v num" id="statFreightPer">-</div></div>
-      <div class="stat"><div class="t">Gns. kost (DKK, inkl. fragt)</div><div class="v num" id="statAvgLanded">-</div></div>
-      <div class="stat"><div class="t">DB i alt</div><div class="v num" id="statMargin">-</div></div>
+      <div class="stat"><div class="t">Antal i alt</div><div class="v" id="statQty">-</div></div>
+      <div class="stat"><div class="t">Fragt pr. stk (DKK)</div><div class="v" id="statFreightPer">-</div></div>
+      <div class="stat"><div class="t">Gns. kost (DKK, inkl. fragt)</div><div class="v" id="statAvgLanded">-</div></div>
+      <div class="stat"><div class="t">DB i alt</div><div class="v" id="statMargin">-</div></div>
     </section>
 
     <!-- Settings -->
@@ -133,6 +142,7 @@
           <div style="height:8px"></div>
           <label for="dutyPct">Told (%) på varer udenfor EU</label>
           <input id="dutyPct" type="text" inputmode="decimal" value="8,5">
+          <div class="small">I praksis lægges der told på linjer, hvor kostpris-valuta er JPY.</div>
           <div style="height:8px"></div>
           <label><input id="pretty" type="checkbox" checked> Foreslå pæne priser (…99,00)</label>
           <div class="small">Moms antaget 25% (DK).</div>
@@ -257,6 +267,7 @@
         <td class="qty-col"><input class="qty" type="text" inputmode="numeric" placeholder="0" value="${prefill.qty||''}"></td>
         <td><input class="price" type="text" inputmode="decimal" placeholder="0,00" value="${prefill.unitPrice||''}"></td>
         <td class="ccy-col" style="display:none"><select class="ccy"></select></td>
+        <td class="shopify-cost"><span class="pill"><span class="label">Shopify kost</span><span class="value">-</span><span class="copy">Kopiér</span></span></td>
         <td class="rrp-sug num">-</td>
         <td><input class="rrp" type="text" inputmode="decimal" placeholder=""></td>
         <td class="margin num small">-<div class="small freightShare">Fragt pr. stk: -</div></td>
@@ -264,6 +275,10 @@
       tbody.appendChild(tr);
       const ccySel = tr.querySelector('.ccy');
       if (ccySel){ ccySel.innerHTML = Object.keys(rates).map(ccy => `<option value="${ccy}">${ccy}</option>`).join(''); ccySel.value = prefill.ccy || qs('#costCcy').value || 'EUR'; }
+      tr.querySelector('.shopify-cost .copy').addEventListener('click', ()=>{
+        const val = tr.querySelector('.shopify-cost .value')?.textContent || '';
+        if (val) { navigator.clipboard.writeText(val.replace(/[^0-9,.-]/g,'')); }
+      });
       applyQtyVisibility(tr);
       recalcRow(tr);
     }
@@ -324,8 +339,14 @@
         const duty = (ccy==='JPY') ? unitCostDKK * dutyRate : 0;
         const landed = unitCostDKK + duty + freightPerUnit;
 
+        // Shopify cost pill
+        const shop = tr.querySelector('.shopify-cost .value');
+        if (shop) shop.textContent = fmtDKK(landed);
+
+        // Freight share display
         const fs = tr.querySelector('.freightShare'); if (fs) fs.textContent = `Fragt pr. stk: ${fmtDKK(freightPerUnit)}`;
 
+        // RRP suggestion in chosen currency
         const rrpRate = rates[rrpCcy] || 1;
         const rrpExVatDKK = landed * markup;
         const rrpInclVatDKK = rrpExVatDKK * 1.25;
@@ -341,17 +362,19 @@
         const grossMarginDKK = exVatDKK - landed;
         const marginPct = exVatDKK>0 ? (grossMarginDKK / exVatDKK) : NaN;
 
+        // Line overview incl. duty
         const marginEl = tr.querySelector('.margin');
         if (marginEl){
           marginEl.innerHTML = `
             Kost (DKK): <b>${fmtDKK(landed)}</b><br>
+            Told (DKK): ${fmtDKK(duty)}<br>
             Ex. moms: ${fmtCcy(exVatCcy, rrpCcy)}<br>
             Moms: ${fmtCcy(vatCcy, rrpCcy)}<br><br>
             Dækningsbidrag: <span class="${grossMarginDKK>=0?'ok':'danger'}"><b>${fmtDKK(grossMarginDKK)}</b> (${isNaN(marginPct)?'-':(marginPct*100).toFixed(1)}%)</span>
           `;
         }
 
-        updateStats();
+        updateTotals();
       }catch(e){
         showErr('Beregning fejlede: ' + (e?.message||e));
       }
@@ -359,27 +382,11 @@
 
     function recalcAll(){ qsa('#items tbody tr').forEach(tr => recalcRow(tr)); updateHeaders(); }
 
-    function updateStats(){
-      const rows = collectRows();
-      const divisor = totalUnitsForFreight();
-      const per = freightPerUnitDKK();
-      let sumLanded = 0, sumExVatDKK = 0, sumQty = 0, markup = toNumber(qs('#markup').value)||3, dutyRate = (toNumber(qs('#dutyPct').value)||0)/100;
-      rows.forEach(r => {
-        const unitCostDKK = (r.unitPrice||0) * (rates[r.ccy]||0);
-        const duty = (r.ccy==='JPY') ? unitCostDKK * dutyRate : 0;
-        const landed = unitCostDKK + duty + per;
-        sumLanded += landed * (isFinite(r.qty)?(qs('#togglePerLineQty').checked ? r.qty : 1): (qs('#togglePerLineQty').checked ? 0 : 1));
-        sumQty += (qs('#togglePerLineQty').checked ? (isFinite(r.qty)?r.qty:0) : 1);
-        const exVatDKK = (landed * markup);
-        sumExVatDKK += exVatDKK * (qs('#togglePerLineQty').checked ? (isFinite(r.qty)?r.qty:0) : 1);
-      });
-      const q1 = qs('#statQty'); if (q1) q1.textContent = divisor>0 ? divisor : (qs('#togglePerLineQty').checked ? sumQty : '-');
-      const avgLanded = (qs('#togglePerLineQty').checked ? (sumQty>0 && sumLanded>0 ? sumLanded/sumQty : NaN) : NaN);
-      const marginTotal = sumExVatDKK - sumLanded;
-      const marginPct = sumExVatDKK>0 ? (marginTotal/sumExVatDKK)*100 : NaN;
-      const q2 = qs('#statFreightPer'); if (q2) q2.textContent = isNaN(per)? '-' : fmtDKK(per);
-      const q3 = qs('#statAvgLanded'); if (q3) q3.textContent = isNaN(avgLanded)? '-' : fmtDKK(avgLanded);
-      const q4 = qs('#statMargin'); if (q4) q4.textContent = (sumQty>0 || !qs('#togglePerLineQty').checked) ? `${fmtDKK(marginTotal)} (${isNaN(marginPct)?'-':marginPct.toFixed(1)}%)` : '-';
+    function applyQtyVisibility(tr){
+      const useLineQty = qs('#togglePerLineQty').checked;
+      const cell = tr.querySelector('.qty-col');
+      if (cell) cell.classList.toggle('hidden', !useLineQty);
+      const head = qs('#colQty'); if (head) head.classList.toggle('hidden', !useLineQty);
     }
 
     function updateHeaders(){
@@ -388,16 +395,38 @@
       const a = qs('#colCost'); if (a) a.textContent = `Kostpris (${costCcy})`;
       const b = qs('#colRrpSug'); if (b) b.textContent = `Forslået RRP (${rrpCcy})`;
       const c = qs('#colRrp'); if (c) c.textContent = `Din RRP (${rrpCcy})`;
-      const qtyHead = qs('#colQty');
-      if (qtyHead) qtyHead.classList.toggle('hidden', !qs('#togglePerLineQty').checked);
-      // hide/show qty inputs per row
-      qsa('#items tbody tr').forEach(applyQtyVisibility);
     }
 
-    function applyQtyVisibility(tr){
+    function totalsContext(){
+      const rows = collectRows();
       const useLineQty = qs('#togglePerLineQty').checked;
-      const cell = tr.querySelector('.qty-col');
-      if (cell) cell.classList.toggle('hidden', !useLineQty);
+      const divisor = totalUnitsForFreight();
+      const per = freightPerUnitDKK();
+      let sumLanded = 0, sumExVatDKK = 0, sumQty = 0, sumDuty = 0;
+      const markup = toNumber(qs('#markup').value)||3, dutyRate = (toNumber(qs('#dutyPct').value)||0)/100;
+      rows.forEach(r => {
+        const unitCostDKK = (r.unitPrice||0) * (rates[r.ccy]||0);
+        const duty = (r.ccy==='JPY') ? unitCostDKK * dutyRate : 0;
+        const landed = unitCostDKK + duty + per;
+        const q = useLineQty ? (isFinite(r.qty)?r.qty:0) : 1;
+        sumDuty += duty * q;
+        sumLanded += landed * q;
+        sumQty += q;
+        const exVatDKK = landed * markup;
+        sumExVatDKK += exVatDKK * q;
+      });
+      const marginTotal = sumExVatDKK - sumLanded;
+      const marginPct = sumExVatDKK>0 ? (marginTotal/sumExVatDKK)*100 : NaN;
+      return { divisor, per, sumLanded, sumExVatDKK, sumQty, sumDuty, marginTotal, marginPct };
+    }
+
+    function updateTotals(){
+      const t = totalsContext();
+      const elQty = qs('#statQty'); if (elQty) elQty.textContent = t.divisor>0 ? t.divisor : (qs('#togglePerLineQty').checked ? t.sumQty : '-');
+      const elFreight = qs('#statFreightPer'); if (elFreight) elFreight.textContent = isNaN(t.per)? '-' : fmtDKK(t.per);
+      const elAvg = qs('#statAvgLanded'); if (elAvg) elAvg.textContent = (t.sumQty>0 ? fmtDKK(t.sumLanded/t.sumQty) : '-');
+      const elMargin = qs('#statMargin'); if (elMargin) elMargin.textContent = (t.sumQty>0 ? `${fmtDKK(t.marginTotal)} (${isNaN(t.marginPct)?'-':t.marginPct.toFixed(1)}%)` : '-');
+      const dutyCard = qs('#totalDutyVal'); if (dutyCard) dutyCard.textContent = fmtDKK(t.sumDuty);
     }
 
     (function init(){
