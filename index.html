@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Cost Price Calculator — v2.3.2</title>
+  <title>Cost Price Calculator — v2.3.3</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     :root { --bg:#f7f8fc; --fg:#0f172a; --muted:#475569; --card:#ffffff; --border:#e2e8f0; --accent:#0ea5e9; }
@@ -42,7 +42,7 @@
 <body>
   <div class="wrap">
     <h1 class="h1">Cost Price Calculator</h1>
-    <div class="version">v2.3.2 — Fragt øverst • RRP & margin</div>
+    <div class="version">v2.3.3 — Fragt øverst • RRP & margin</div>
 
     <div id="err" class="error"></div>
 
@@ -146,8 +146,8 @@
 
   <script>
     const errBox = document.getElementById('err');
-    function showErr(msg){ errBox.textContent = msg; errBox.style.display = 'block'; }
-    function clearErr(){ errBox.style.display = 'none'; errBox.textContent = ''; }
+    const showErr = (m)=>{ errBox.textContent = m; errBox.style.display='block'; console.error(m); };
+    const clearErr = ()=>{ errBox.style.display='none'; errBox.textContent=''; };
 
     const qs = (x) => document.querySelector(x);
     const qsa = (x) => Array.from(document.querySelectorAll(x));
@@ -175,9 +175,7 @@
     const defaultRates = { DKK:1, EUR:7.45, JPY:0.046, USD:6.8, GBP:8.7, SEK:0.65, NOK:0.66, CNY:0.95 };
     let rates = {...defaultRates};
 
-    function buildCurrencySelect(el){
-      el.innerHTML = Object.keys(rates).map(ccy => `<option value="${ccy}">${ccy}</option>`).join('');
-    }
+    function buildCurrencySelect(el){ el.innerHTML = Object.keys(rates).map(ccy => `<option value="${ccy}">${ccy}</option>`).join(''); }
 
     function renderFxTable(){
       const tbody = qs('#fxTable tbody'); tbody.innerHTML = '';
@@ -198,7 +196,7 @@
     }
 
     async function refreshFx(){
-      clearErr(); qs('#fxInfo').textContent = 'Henter kurser…';
+      clearErr(); const fxInfo = qs('#fxInfo'); if(fxInfo) fxInfo.textContent = 'Henter kurser…';
       let got = false;
       try{
         const symbols = Object.keys(rates).filter(k=>k!=='DKK').join(',');
@@ -206,7 +204,7 @@
         if(r.ok){
           const j = await r.json();
           Object.keys(j.rates).forEach(ccy => { const perDKK = j.rates[ccy]; if (perDKK && perDKK>0) rates[ccy] = 1/perDKK; });
-          qs('#fxInfo').textContent = `Kursdata: ${j.date} • Kilde: exchangerate.host`;
+          if(fxInfo) fxInfo.textContent = `Kursdata: ${j.date} • Kilde: exchangerate.host`;
           got = true;
         }
       }catch(e){}
@@ -217,7 +215,7 @@
             const j = await r.json();
             const eur_per_dkk = 1 / j.rates.DKK;
             Object.keys(rates).forEach(ccy => { if(ccy==='DKK') return; const c_per_eur = j.rates[ccy]; if(c_per_eur>0){ rates[ccy] = (1/eur_per_dkk) / c_per_eur; } });
-            qs('#fxInfo').textContent = `Kursdata: ${j.time_last_update_utc.split(' ').slice(0,4).join(' ')} • Kilde: er-api.com`;
+            if(fxInfo) fxInfo.textContent = `Kursdata: ${j.time_last_update_utc.split(' ').slice(0,4).join(' ')} • Kilde: er-api.com`;
             got = true;
           }
         }catch(e){}
@@ -232,12 +230,12 @@
             const dkkPerEur = ratesEur['DKK'];
             Object.keys(rates).forEach(ccy => { if(ccy==='DKK') return; const ccyPerEur = ratesEur[ccy]; if (dkkPerEur && ccyPerEur){ rates[ccy] = dkkPerEur / ccyPerEur; } });
             const when = (tx.match(/time=['"]([0-9-]+)['"]/)||[])[1] || '';
-            qs('#fxInfo').textContent = `Kursdata: ${when} • Kilde: ECB`;
+            if(fxInfo) fxInfo.textContent = `Kursdata: ${when} • Kilde: ECB`;
             got = true;
           }
         }catch(e){}
       }
-      if(!got){ qs('#fxInfo').textContent = 'Kunne ikke hente kurser – bruger værdierne i tabellen.'; }
+      if(!got && fxInfo){ fxInfo.textContent = 'Kunne ikke hente kurser – bruger værdierne i tabellen.'; }
       renderFxTable(); recalcAll(); updateHeaders();
     }
 
@@ -256,19 +254,19 @@
         <td class="margin num small">-<div class="small freightShare">Fragt pr. stk: -</div></td>
         <td><button class="btn del">×</button></td>`;
       tbody.appendChild(tr);
-      const ccySel = tr.querySelector('.ccy'); ccySel.innerHTML = Object.keys(rates).map(ccy => `<option value="${ccy}">${ccy}</option>`).join('');
-      ccySel.value = prefill.ccy || qs('#costCcy').value || 'EUR';
+      const ccySel = tr.querySelector('.ccy');
+      if (ccySel){ ccySel.innerHTML = Object.keys(rates).map(ccy => `<option value="${ccy}">${ccy}</option>`).join(''); ccySel.value = prefill.ccy || qs('#costCcy').value || 'EUR'; }
       recalcRow(tr);
     }
 
     function collectRows(){
       return qsa('#items tbody tr').map(tr => ({
         tr,
-        qty: toNumber(tr.querySelector('.qty').value),
-        unitPrice: toNumber(tr.querySelector('.price').value),
-        ccy: (qs('#togglePerLineCcy').checked ? tr.querySelector('.ccy').value : qs('#costCcy').value),
-        rrpInput: toNumber(tr.querySelector('.rrp').value),
-        description: tr.querySelector('.desc').value.trim()
+        qty: toNumber(tr.querySelector('.qty')?.value),
+        unitPrice: toNumber(tr.querySelector('.price')?.value),
+        ccy: (qs('#togglePerLineCcy').checked ? tr.querySelector('.ccy')?.value : qs('#costCcy').value),
+        rrpInput: toNumber(tr.querySelector('.rrp')?.value),
+        description: (tr.querySelector('.desc')?.value || '').trim()
       }));
     }
 
@@ -291,24 +289,24 @@
         const freightDKK = (rates[freightCcy]||0) * freightAmt;
         const freightPerUnit = totalUnits>0 ? freightDKK / totalUnits : 0;
 
-        const qty = toNumber(tr.querySelector('.qty').value) || 0;
-        const unitPrice = toNumber(tr.querySelector('.price').value) || 0;
-        const ccy = (qs('#togglePerLineCcy').checked ? tr.querySelector('.ccy').value : qs('#costCcy').value);
-        const rrpInput = toNumber(tr.querySelector('.rrp').value);
+        const qty = toNumber(tr.querySelector('.qty')?.value) || 0;
+        const unitPrice = toNumber(tr.querySelector('.price')?.value) || 0;
+        const ccy = (qs('#togglePerLineCcy').checked ? (tr.querySelector('.ccy')?.value||'') : qs('#costCcy').value);
+        const rrpInput = toNumber(tr.querySelector('.rrp')?.value);
 
         const rate = rates[ccy] || 0;
         const unitCostDKK = unitPrice * rate;
         const duty = (ccy==='JPY') ? unitCostDKK * dutyRate : 0;
         const landed = unitCostDKK + duty + freightPerUnit;
 
-        tr.querySelector('.freightShare').textContent = `Fragt pr. stk: ${fmtDKK(freightPerUnit)}`;
+        const fs = tr.querySelector('.freightShare'); if (fs) fs.textContent = `Fragt pr. stk: ${fmtDKK(freightPerUnit)}`;
 
         const rrpRate = rates[rrpCcy] || 1;
         const rrpExVatDKK = landed * markup;
         const rrpInclVatDKK = rrpExVatDKK * 1.25;
         const rrpInclVatInCcyRaw = rrpInclVatDKK / rrpRate;
         const rrpSuggestedInCcy = pretty ? prettyVal(rrpInclVatInCcyRaw) : rrpInclVatInCcyRaw;
-        tr.querySelector('.rrp-sug').textContent = fmtCcy(rrpSuggestedInCcy, rrpCcy);
+        const sug = tr.querySelector('.rrp-sug'); if (sug) sug.textContent = fmtCcy(rrpSuggestedInCcy, rrpCcy);
 
         const rrpInclVatInCcy = (isFinite(rrpInput)&&rrpInput>0) ? rrpInput : rrpSuggestedInCcy;
         const rrpInclVatDKK2 = rrpInclVatInCcy * rrpRate;
@@ -318,12 +316,15 @@
         const grossMarginDKK = exVatDKK - landed;
         const marginPct = exVatDKK>0 ? (grossMarginDKK / exVatDKK) : NaN;
 
-        tr.querySelector('.margin').innerHTML = `
-          Kost (DKK): <b>${fmtDKK(landed)}</b><br>
-          Ex. moms: ${fmtCcy(exVatCcy, rrpCcy)}<br>
-          Moms: ${fmtCcy(vatCcy, rrpCcy)}<br><br>
-          Dækningsbidrag: <span class="${grossMarginDKK>=0?'ok':'danger'}"><b>${fmtDKK(grossMarginDKK)}</b> (${isNaN(marginPct)?'-':(marginPct*100).toFixed(1)}%)</span>
-        `;
+        const marginEl = tr.querySelector('.margin');
+        if (marginEl){
+          marginEl.innerHTML = `
+            Kost (DKK): <b>${fmtDKK(landed)}</b><br>
+            Ex. moms: ${fmtCcy(exVatCcy, rrpCcy)}<br>
+            Moms: ${fmtCcy(vatCcy, rrpCcy)}<br><br>
+            Dækningsbidrag: <span class="${grossMarginDKK>=0?'ok':'danger'}"><b>${fmtDKK(grossMarginDKK)}</b> (${isNaN(marginPct)?'-':(marginPct*100).toFixed(1)}%)</span>
+          `;
+        }
 
         updateStats();
       }catch(e){
@@ -352,18 +353,18 @@
       const avgLanded = sumQty>0 ? (sumLanded / sumQty) : NaN;
       const marginTotal = sumExVatDKK - sumLanded;
       const marginPct = sumExVatDKK>0 ? (marginTotal/sumExVatDKK)*100 : NaN;
-      qs('#statQty').textContent = sumQty>0 ? sumQty : '-';
-      qs('#statFreightPer').textContent = isNaN(freightPerUnit)? '-' : fmtDKK(freightPerUnit);
-      qs('#statAvgLanded').textContent = isNaN(avgLanded)? '-' : fmtDKK(avgLanded);
-      qs('#statMargin').textContent = sumQty>0 ? `${fmtDKK(marginTotal)} (${isNaN(marginPct)?'-':marginPct.toFixed(1)}%)` : '-';
+      const q1 = qs('#statQty'); if (q1) q1.textContent = sumQty>0 ? sumQty : '-';
+      const q2 = qs('#statFreightPer'); if (q2) q2.textContent = isNaN(freightPerUnit)? '-' : fmtDKK(freightPerUnit);
+      const q3 = qs('#statAvgLanded'); if (q3) q3.textContent = isNaN(avgLanded)? '-' : fmtDKK(avgLanded);
+      const q4 = qs('#statMargin'); if (q4) q4.textContent = sumQty>0 ? `${fmtDKK(marginTotal)} (${isNaN(marginPct)?'-':marginPct.toFixed(1)}%)` : '-';
     }
 
     function updateHeaders(){
       const costCcy = qs('#costCcy').value;
       const rrpCcy = qs('#rrpCcy').value;
-      qs('#colCost').textContent = `Kostpris (${costCcy})`;
-      qs('#colRrpSug').textContent = `Forslået RRP (${rrpCcy})`;
-      qs('#colRrp').textContent = `Din RRP (${rrpCcy})`;
+      const a = qs('#colCost'); if (a) a.textContent = `Kostpris (${costCcy})`;
+      const b = qs('#colRrpSug'); if (b) b.textContent = `Forslået RRP (${rrpCcy})`;
+      const c = qs('#colRrp'); if (c) c.textContent = `Din RRP (${rrpCcy})`;
     }
 
     (function init(){
@@ -376,16 +377,10 @@
         // events
         qs('#addRow').addEventListener('click', ()=> addRow());
         ['#markup','#dutyPct','#pretty','#costCcy','#rrpCcy','#togglePerLineCcy','#freightAmount','#freightCcy'].forEach(id=>{
-          const el = qs(id);
-          ['input','change','keyup'].forEach(evt => el.addEventListener(evt, recalcAll));
+          const el = qs(id); ['input','change','keyup'].forEach(evt => el.addEventListener(evt, recalcAll));
         });
         qs('#refreshFx').addEventListener('click', refreshFx);
-        // delegate for table inputs
         qs('#items').addEventListener('input', (e)=>{
-          const tr = e.target.closest('tr'); if(!tr) return;
-          if (e.target.classList.contains('qty') || e.target.classList.contains('price') || e.target.classList.contains('rrp') || e.target.classList.contains('desc')) recalcRow(tr);
-        });
-        qs('#items').addEventListener('keyup', (e)=>{
           const tr = e.target.closest('tr'); if(!tr) return;
           if (e.target.matches('input')) recalcRow(tr);
         });
