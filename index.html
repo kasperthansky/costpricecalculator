@@ -1,0 +1,368 @@
+import React, { useEffect, useMemo, useState } from "react";
+
+// Single-file React component. Uses Tailwind for styling.
+// Drop this into a Next.js/CRA project, or preview it directly here.
+// No external UI libs required.
+
+export default function Superprisberegner() {
+  // --- Form state ---
+  const [eurToDkk, setEurToDkk] = useState(7.5);
+  const [jpyToDkk, setJpyToDkk] = useState(0.046);
+  const [dutyRate, setDutyRate] = useState(0.085); // 8.5%
+
+  const [priceCurrency, setPriceCurrency] = useState<"JPY" | "EUR">("JPY");
+  const [unitPrice, setUnitPrice] = useState<number | "">(37960);
+
+  const [discountDKK, setDiscountDKK] = useState<number | "">(0);
+
+  const [freightCurrency, setFreightCurrency] = useState<"JPY" | "EUR">("JPY");
+  const [freightTotal, setFreightTotal] = useState<number | "">(31308);
+
+  const [quantity, setQuantity] = useState<number | "">(65);
+
+  const [roundDisplay, setRoundDisplay] = useState(true);
+
+  // Persist to localStorage so the page remembers last inputs
+  useEffect(() => {
+    const saved = localStorage.getItem("superpris_v1");
+    if (saved) {
+      try {
+        const o = JSON.parse(saved);
+        setEurToDkk(o.eurToDkk ?? 7.5);
+        setJpyToDkk(o.jpyToDkk ?? 0.046);
+        setDutyRate(o.dutyRate ?? 0.085);
+        setPriceCurrency(o.priceCurrency ?? "JPY");
+        setUnitPrice(o.unitPrice ?? 0);
+        setDiscountDKK(o.discountDKK ?? 0);
+        setFreightCurrency(o.freightCurrency ?? "JPY");
+        setFreightTotal(o.freightTotal ?? 0);
+        setQuantity(o.quantity ?? 1);
+        setRoundDisplay(o.roundDisplay ?? true);
+      } catch {}
+    }
+  }, []);
+
+  useEffect(() => {
+    const payload = {
+      eurToDkk,
+      jpyToDkk,
+      dutyRate,
+      priceCurrency,
+      unitPrice,
+      discountDKK,
+      freightCurrency,
+      freightTotal,
+      quantity,
+      roundDisplay,
+    };
+    localStorage.setItem("superpris_v1", JSON.stringify(payload));
+  }, [
+    eurToDkk,
+    jpyToDkk,
+    dutyRate,
+    priceCurrency,
+    unitPrice,
+    discountDKK,
+    freightCurrency,
+    freightTotal,
+    quantity,
+    roundDisplay,
+  ]);
+
+  // --- Derived calculations ---
+  const calc = useMemo(() => {
+    const errors: string[] = [];
+
+    const q = typeof quantity === "number" ? quantity : Number(quantity || 0);
+    if (!q || q <= 0) errors.push("Antal skal være > 0.");
+
+    const up = typeof unitPrice === "number" ? unitPrice : Number(unitPrice || 0);
+    if (up <= 0) errors.push("Angiv kostpris > 0.");
+
+    const fr = typeof freightTotal === "number" ? freightTotal : Number(freightTotal || 0);
+    if (fr < 0) errors.push("Fragt kan ikke være negativ.");
+
+    const eur = Number(eurToDkk || 0);
+    const jpy = Number(jpyToDkk || 0);
+    if (eur <= 0) errors.push("EUR→DKK skal være > 0.");
+    if (jpy <= 0) errors.push("JPY→DKK skal være > 0.");
+
+    const dr = Number(dutyRate || 0);
+    if (dr < 0) errors.push("Toldsats kan ikke være negativ.");
+
+    const disc = typeof discountDKK === "number" ? discountDKK : Number(discountDKK || 0);
+    if (disc < 0) errors.push("Rabat (DKK) kan ikke være negativ.");
+
+    if (errors.length) {
+      return { errors } as const;
+    }
+
+    const costDKK = priceCurrency === "JPY" ? up * jpy : up * eur;
+    const netCost = costDKK - disc;
+    const freightDKKTotal = freightCurrency === "JPY" ? fr * jpy : fr * eur;
+    const freightPerUnit = freightDKKTotal / q;
+    const duty = priceCurrency === "JPY" ? netCost * dr : 0;
+    const totalUnitCost = netCost + freightPerUnit + duty;
+
+    return {
+      errors,
+      costDKK,
+      netCost,
+      freightPerUnit,
+      duty,
+      totalUnitCost,
+    } as const;
+  }, [eurToDkk, jpyToDkk, dutyRate, priceCurrency, unitPrice, discountDKK, freightCurrency, freightTotal, quantity]);
+
+  // --- Helpers ---
+  const fmtDKK = (n?: number) => {
+    if (n == null || Number.isNaN(n)) return "-";
+    const v = roundDisplay ? Math.round(n * 100) / 100 : n;
+    return new Intl.NumberFormat("da-DK", { style: "currency", currency: "DKK" }).format(v);
+  };
+
+  const fmtPct = (n?: number) => {
+    if (n == null || Number.isNaN(n)) return "-";
+    const v = roundDisplay ? Math.round(n * 10000) / 100 : n * 100;
+    return `${v.toLocaleString("da-DK")} %`;
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 py-8">
+      <div className="max-w-5xl mx-auto px-4">
+        <header className="mb-6">
+          <h1 className="text-3xl font-semibold tracking-tight">Storefredes Superprisberegner — Web</h1>
+          <p className="text-slate-600 mt-1">Kopi af regnelogikken fra regnearket, med klar validering og afrunding.</p>
+        </header>
+
+        <div className="grid md:grid-cols-3 gap-6">
+          {/* Konfiguration */}
+          <section className="md:col-span-1 bg-white rounded-2xl shadow p-4">
+            <h2 className="text-lg font-medium mb-3">Valuta & told</h2>
+            <div className="space-y-3">
+              <LabeledNumber
+                label="EUR → DKK"
+                value={eurToDkk}
+                onChange={setEurToDkk}
+                min={0}
+                step={0.0001}
+              />
+              <LabeledNumber
+                label="JPY → DKK"
+                value={jpyToDkk}
+                onChange={setJpyToDkk}
+                min={0}
+                step={0.0001}
+              />
+              <LabeledNumber
+                label="Toldsats"
+                value={dutyRate}
+                onChange={setDutyRate}
+                min={0}
+                max={1}
+                step={0.0001}
+                suffix=" (0–1)"
+              />
+              <div className="flex items-center justify-between pt-1">
+                <label className="text-sm text-slate-600">Vis afrundede beløb</label>
+                <input
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={roundDisplay}
+                  onChange={(e) => setRoundDisplay(e.target.checked)}
+                />
+              </div>
+            </div>
+          </section>
+
+          {/* Inputfelter */}
+          <section className="md:col-span-2 bg-white rounded-2xl shadow p-4">
+            <h2 className="text-lg font-medium mb-3">Input</h2>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <fieldset className="border border-slate-200 rounded-xl p-3">
+                  <legend className="px-1 text-sm text-slate-600">Kostpris</legend>
+                  <div className="flex gap-4 mb-2">
+                    <label className="inline-flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="priceCurrency"
+                        checked={priceCurrency === "JPY"}
+                        onChange={() => setPriceCurrency("JPY")}
+                      />
+                      <span>JPY</span>
+                    </label>
+                    <label className="inline-flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="priceCurrency"
+                        checked={priceCurrency === "EUR"}
+                        onChange={() => setPriceCurrency("EUR")}
+                      />
+                      <span>EUR</span>
+                    </label>
+                  </div>
+                  <LabeledNumber
+                    label={`Kostpris pr. stk (${priceCurrency})`}
+                    value={unitPrice}
+                    onChange={setUnitPrice}
+                    min={0}
+                    step={0.01}
+                  />
+                </fieldset>
+
+                <LabeledNumber
+                  label="Rabat (DKK) pr. stk"
+                  value={discountDKK}
+                  onChange={setDiscountDKK}
+                  min={0}
+                  step={0.01}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <fieldset className="border border-slate-200 rounded-xl p-3">
+                  <legend className="px-1 text-sm text-slate-600">Fragt samlet</legend>
+                  <div className="flex gap-4 mb-2">
+                    <label className="inline-flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="freightCurrency"
+                        checked={freightCurrency === "JPY"}
+                        onChange={() => setFreightCurrency("JPY")}
+                      />
+                      <span>JPY</span>
+                    </label>
+                    <label className="inline-flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="freightCurrency"
+                        checked={freightCurrency === "EUR"}
+                        onChange={() => setFreightCurrency("EUR")}
+                      />
+                      <span>EUR</span>
+                    </label>
+                  </div>
+                  <LabeledNumber
+                    label={`Fragt i alt (${freightCurrency})`}
+                    value={freightTotal}
+                    onChange={setFreightTotal}
+                    min={0}
+                    step={0.01}
+                  />
+                </fieldset>
+
+                <LabeledNumber
+                  label="Antal varer (fordeling af fragt)"
+                  value={quantity}
+                  onChange={setQuantity}
+                  min={1}
+                  step={1}
+                />
+              </div>
+            </div>
+
+            {/* Fejl */}
+            {calc.errors && calc.errors.length > 0 && (
+              <div className="mt-4 rounded-xl border border-red-200 bg-red-50 text-red-700 p-3 text-sm">
+                <ul className="list-disc list-inside space-y-1">
+                  {calc.errors.map((e, i) => (
+                    <li key={i}>{e}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </section>
+        </div>
+
+        {/* Output/resultater */}
+        <section className="mt-6 grid md:grid-cols-4 gap-4">
+          <StatCard title="Kostpris (DKK)">
+            {fmtDKK((calc as any).costDKK)}
+          </StatCard>
+          <StatCard title="Kostpris m/ rabat">
+            {fmtDKK((calc as any).netCost)}
+          </StatCard>
+          <StatCard title="Andel fragt pr. stk">
+            {fmtDKK((calc as any).freightPerUnit)}
+          </StatCard>
+          <StatCard title={`Told (${fmtPct(dutyRate)})`}>
+            {fmtDKK((calc as any).duty)}
+          </StatCard>
+        </section>
+
+        <section className="mt-4">
+          <div className="bg-white rounded-2xl shadow p-4 flex items-center justify-between">
+            <div>
+              <div className="text-slate-500 text-sm">Total kostpris pr. stk</div>
+              <div className="text-3xl font-semibold">{fmtDKK((calc as any).totalUnitCost)}</div>
+            </div>
+            <div className="text-right text-slate-500 text-sm">
+              <div>
+                {priceCurrency === "JPY" ? "(Told anvendt)" : "(EU-vare – ingen told)"}
+              </div>
+              <div>Visning: {roundDisplay ? "afrundet" : "fuld præcision"}</div>
+            </div>
+          </div>
+        </section>
+
+        {/* Footnotes / assumptions */}
+        <section className="mt-6 text-sm text-slate-600">
+          <h3 className="font-medium mb-2">Antagelser & noter</h3>
+          <ul className="list-disc list-inside space-y-1">
+            <li>Told beregnes kun når kostpris-valuta er JPY (som proxy for import udenfor EU).</li>
+            <li>Fragt fordeles ligeligt per stk. Brug vægt/volumen-fordeling i en V2, hvis nødvendigt.</li>
+            <li>Rabat er et fast beløb i DKK pr. stk (ikke procent).</li>
+            <li>Talformat viser DKK; slå afrunding til/fra efter behov.</li>
+          </ul>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function LabeledNumber({
+  label,
+  value,
+  onChange,
+  min,
+  max,
+  step,
+  suffix,
+}: {
+  label: string;
+  value: number | "";
+  onChange: (n: number | "") => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  suffix?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="block text-sm text-slate-600 mb-1">{label}{suffix ?? ""}</span>
+      <input
+        className="w-full rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-slate-300"
+        type="number"
+        value={value}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (v === "") onChange("");
+          else onChange(Number(v));
+        }}
+        min={min}
+        max={max}
+        step={step}
+      />
+    </label>
+  );
+}
+
+function StatCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-white rounded-2xl shadow p-4">
+      <div className="text-slate-500 text-sm">{title}</div>
+      <div className="text-xl font-semibold mt-1">{children}</div>
+    </div>
+  );
+}
