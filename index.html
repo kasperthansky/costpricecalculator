@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Cost Price Calculator — v2.0 (Faktura-upload prototype)</title>
+  <title>Cost Price Calculator — v2.0.1 (Faktura-upload)</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     :root { --bg:#f7f8fc; --fg:#0f172a; --muted:#475569; --card:#ffffff; --border:#e2e8f0; --accent:#0ea5e9; }
@@ -24,6 +24,7 @@
     .hint{font-size:12px;color:var(--muted)}
     .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:#fff;cursor:pointer}
     .btn:hover{background:#f8fafc}
+    .danger{border-color:#fecaca;background:#fff5f5}
     .errors{background:#fee2e2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:10px;font-size:14px;margin-top:10px}
     table{width:100%;border-collapse:collapse}
     th, td{border-bottom:1px solid var(--border);padding:8px;vertical-align:top}
@@ -35,6 +36,7 @@
     .thumb{max-height:180px;border:1px solid var(--border);border-radius:10px}
     .center{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
     .small{font-size:12px;color:var(--muted)}
+    progress{width:260px;height:12px}
   </style>
   <!-- PDF.js & Tesseract from CDNs -->
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.js"></script>
@@ -44,7 +46,7 @@
 <body>
   <div class="wrap">
     <h1 class="h1">Cost Price Calculator</h1>
-    <div class="version">v2.0 — Faktura-upload (prototype)</div>
+    <div class="version">v2.0.1 — Faktura-upload</div>
 
     <!-- Step 0: Upload -->
     <section class="card step">
@@ -52,10 +54,13 @@
       <div class="center">
         <input id="file" type="file" accept=".pdf,image/*">
         <button id="scan" class="btn" disabled>Scan faktura</button>
+        <button id="cancel" class="btn danger" style="display:none">Afbryd</button>
+        <progress id="prog" value="0" max="1" style="display:none"></progress>
         <span id="scanInfo" class="small"></span>
       </div>
       <div id="preview" style="margin-top:10px"></div>
-      <div class="hint" style="margin-top:8px">PDF eller billede. Vi finder så meget som muligt automatisk. Du kan altid rette det, vi ikke gætter korrekt.</div>
+      <div class="hint" style="margin-top:8px">PDF eller billede. Hvis vi ikke kan læse tekst direkte fra PDF’en, prøver vi automatisk OCR (billedlæsning). Du kan altid rette det, vi ikke gætter korrekt.</div>
+      <div id="scanError" class="errors" style="display:none"></div>
     </section>
 
     <!-- Step 1: Valuta & told -->
@@ -112,7 +117,7 @@
     <!-- Step 3: Varelinjer (fra faktura) -->
     <section class="card step">
       <h2>3. Varelinjer</h2>
-      <div class="hint">Vi forsøger at finde antal (pcs), enhedspris og linjebeløb. Du kan altid redigere. Beskrivelse kan stå på flere linjer.</div>
+      <div class="hint">Vi forsøger at finde antal (pcs), enhedspris og linjebeløb. Du kan altid redigere.</div>
       <div style="overflow:auto;margin-top:8px">
         <table id="items">
           <thead>
@@ -125,8 +130,7 @@
               <th style="width:120px">Kilde</th>
             </tr>
           </thead>
-          <tbody>
-          </tbody>
+          <tbody></tbody>
         </table>
       </div>
       <div id="parseInfo" class="small" style="margin-top:8px"></div>
@@ -157,15 +161,12 @@
   </div>
 
   <script>
-    // PDF.js worker config
     if (window['pdfjsLib']) {
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.js';
     }
-
     const qs = (x) => document.querySelector(x);
     const qsa = (x) => Array.from(document.querySelectorAll(x));
 
-    // number parser: supports "37.960" (thousands) and "7,5" (comma decimal)
     const toNumber = (str) => {
       if (typeof str !== 'string') str = String(str ?? '');
       str = str.replace(/¥/g,'').trim().replace(/\\s/g, '');
@@ -180,7 +181,6 @@
       return v.toLocaleString('da-DK', {style:'currency', currency:'DKK'});
     };
 
-    // FX fetching (simple; optional)
     async function fetchFX(){
       qs('#fxInfo').textContent = 'Henter kurser…';
       let got = false;
@@ -202,27 +202,19 @@
           }
         }
       }catch(e){}
-      if(!got) setInfo('Kursdata: standardværdier (kan redigeres).');
+      if(!got){ setInfo('Kursdata: standardværdier (kan redigeres).'); }
     }
 
-    // Parse invoice text → items
     function parseInvoiceText(txt){
       const lines = txt.split(/\\r?\\n/).map(s => s.trim()).filter(Boolean);
       const items = [];
       const clues = [];
-
-      // Try to detect currency (JPY dominates sample)
       const hasYen = /¥/.test(txt) || /JPY/.test(txt);
-      if (hasYen) clues.push('Valuta fundet: JPY (¥/JPY nævnt)');
-      const hasEur = /\\bEUR\\b/.test(txt);
-      if (hasEur) clues.push('EUR nævnt på faktura');
-
-      // Heuristic: lines like "10 pcs ¥17,800 ¥178,000" or "10 pcs ¥14,260 ¥142,600"
+      if (hasYen) clues.push('Valuta fundet: JPY');
       const itemRegex = /(\\d+)\\s*pcs?\\s*¥?([\\d,.]+)\\s*¥?([\\d,.]+)/i;
       for (let i=0;i<lines.length;i++){
         const m = lines[i].match(itemRegex);
         if (m){
-          // Find description above current line (look back up to 3 non-empty lines)
           let desc = '';
           for (let j=i-1; j>=Math.max(0,i-3); j--){
             if (lines[j] && !itemRegex.test(lines[j]) && !/pcs?\\s*$/i.test(lines[j])){
@@ -235,10 +227,9 @@
           items.push({ description: desc || '(Ukendt vare)', qty, unitPrice: unit, amount, source: lines[i] });
         }
       }
-      return { items, clues };
+      return { items, clues, linesCount: lines.length };
     }
 
-    // Render items into table
     function renderItems(items){
       const tbody = qs('#items tbody');
       tbody.innerHTML = '';
@@ -288,7 +279,6 @@
       const freightDKKTotal = freightCcy==='JPY' ? freightTotal * jpy : freightTotal * eur;
       const freightPerUnit = totalUnits>0 ? (freightDKKTotal / totalUnits) : 0;
 
-      let sumInfo = [];
       let totalPerUnitWeighted = 0;
       items.forEach(it => {
         const unitCostDKK = (priceCcy==='JPY' ? it.unitPrice * jpy : it.unitPrice * eur);
@@ -299,36 +289,79 @@
       });
       const avgPerUnit = totalUnits>0 ? (totalPerUnitWeighted / totalUnits) : NaN;
 
-      qs('#costDKK').textContent = '-'; // not meaningful for multi-line; keep detailed calc per line in future
-      qs('#netCost').textContent = '-';
       qs('#freightPerUnit').textContent = isNaN(freightPerUnit)? '-' : fromNumberDKK(freightPerUnit);
-      qs('#dutyAmt').textContent = '-';
       qs('#total').textContent = isNaN(avgPerUnit) ? '-' : fromNumberDKK(avgPerUnit);
       qs('#notes').textContent = priceCcy==='JPY' ? '(Told anvendt på JPY-varer)' : '(Ingen told)';
       qs('#summary').textContent = totalUnits>0 ? `Antal varer i alt: ${totalUnits}. Fragt pr. stk: ${fromNumberDKK(freightPerUnit)}.` : 'Tilføj antal for at beregne fragt pr. stk.';
     }
 
-    // Wire UI
+    // ---------- Scanning logic with progress & cancel ----------
+    let cancelScan = false;
+    qs('#cancel').addEventListener('click', () => { cancelScan = true; qs('#scanInfo').textContent = 'Afbryder…'; });
+
+    async function ocrImageLike(blob, onProgress){
+      const worker = await Tesseract.createWorker('eng', 1, {
+        logger: m => { if (m.status && m.progress!=null) onProgress(m.status, m.progress); }
+      });
+      const { data } = await worker.recognize(blob);
+      await worker.terminate();
+      return data.text;
+    }
+
+    async function pdfToTextOrOCR(file, onProgress){
+      const arrayBuf = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({data: arrayBuf}).promise;
+      let text = '';
+      for (let p=1; p<=pdf.numPages; p++){
+        if (cancelScan) throw new Error('Bruger afbrød');
+        const page = await pdf.getPage(p);
+        const content = await page.getTextContent();
+        const strs = content.items.map(it => it.str).filter(Boolean);
+        text += strs.join('\\n') + '\\n';
+      }
+      // If almost no text, fall back to OCR by rendering each page to a canvas
+      if (text.trim().length < 50){
+        text = '';
+        for (let p=1; p<=pdf.numPages; p++){
+          if (cancelScan) throw new Error('Bruger afbrød');
+          const page = await pdf.getPage(p);
+          const viewport = page.getViewport({ scale: 2.0 });
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          await page.render({ canvasContext: ctx, viewport }).promise;
+          const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+          const t = await ocrImageLike(blob, (status, prog)=>{
+            qs('#scanInfo').textContent = `OCR side ${p}/${pdf.numPages}: ${status} ${(prog*100).toFixed(0)}%`;
+            const pr = qs('#prog'); pr.style.display='inline-block'; pr.value = prog; pr.max = 1;
+          });
+          text += '\\n' + t;
+        }
+      }
+      return text;
+    }
+
     (function init(){
-      // FX
       fetchFX();
       qs('#refreshFx').addEventListener('click', fetchFX);
-      // Recalc on edits
       ['#eur','#jpy','#dutyPct','#discount','#freightTotal'].forEach(id => {
         qs(id).addEventListener('input', recalc);
       });
       qsa('input[name=priceCcy],input[name=freightCcy]').forEach(el => el.addEventListener('change', recalc));
-      // Items listeners (delegate)
       qs('#items').addEventListener('input', (e)=>{
         if (e.target.tagName==='INPUT') recalc();
       });
-      // Upload
+
       const fileInput = qs('#file');
       const btnScan = qs('#scan');
+      const btnCancel = qs('#cancel');
+      const prog = qs('#prog');
+      const errBox = qs('#scanError');
+
       fileInput.addEventListener('change', () => {
         qs('#scanInfo').textContent = fileInput.files?.[0]?.name || '';
         btnScan.disabled = !fileInput.files?.length;
-        // quick preview
         const f = fileInput.files?.[0];
         const prev = qs('#preview');
         prev.innerHTML='';
@@ -344,36 +377,47 @@
           prev.appendChild(span);
         }
       });
+
       btnScan.addEventListener('click', async () => {
         const f = fileInput.files?.[0];
         if (!f) return;
-        qs('#scanInfo').textContent = 'Scanner…';
-        let text = '';
+        cancelScan = false;
+        btnScan.disabled = true;
+        btnCancel.style.display = 'inline-flex';
+        prog.style.display = 'inline-block';
+        prog.value = 0; prog.max = 1;
+        errBox.style.display = 'none'; errBox.textContent = '';
+
         try{
+          qs('#scanInfo').textContent = 'Scanner… (henter tekst)';
+          let text = '';
           if (f.type === 'application/pdf'){
-            const arrayBuf = await f.arrayBuffer();
-            const pdf = await pdfjsLib.getDocument({data: arrayBuf}).promise;
-            for (let p=1; p<=pdf.numPages; p++){
-              const page = await pdf.getPage(p);
-              const content = await page.getTextContent();
-              const strs = content.items.map(it => it.str);
-              text += strs.join('\\n') + '\\n';
-            }
+            text = await pdfToTextOrOCR(f, (status, p)=>{
+              qs('#scanInfo').textContent = status + ' ' + Math.round(p*100) + '%';
+              prog.value = p; prog.max = 1;
+            });
           } else if (f.type.startsWith('image/')){
-            const { data } = await Tesseract.recognize(f, 'eng', { tessedit_char_whitelist: '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ¥,.-()/% ' });
-            text = data.text;
+            text = await ocrImageLike(f, (status, p)=>{
+              qs('#scanInfo').textContent = status + ' ' + Math.round(p*100) + '%';
+              prog.value = p; prog.max = 1;
+            });
           } else {
-            qs('#scanInfo').textContent = 'Ukendt filtype.';
-            return;
+            throw new Error('Ukendt filtype.');
           }
+          if (cancelScan) throw new Error('Bruger afbrød');
+          const { items, clues, linesCount } = parseInvoiceText(text);
+          renderItems(items);
+          qs('#parseInfo').textContent = items.length ? `Fandt ${items.length} varelinjer. ${clues.join(' • ')}` : `Fandt ingen varelinjer. (Lines: ${linesCount}). Udfyld manuelt.`;
+          qs('#scanInfo').textContent = 'Færdig.';
         } catch (e){
-          qs('#scanInfo').textContent = 'Fejl ved læsning: ' + (e?.message||e);
-          return;
+          errBox.style.display = 'block';
+          errBox.textContent = 'Scanning fejlede: ' + (e?.message || e);
+          qs('#scanInfo').textContent = '';
+        } finally {
+          btnScan.disabled = false;
+          btnCancel.style.display = 'none';
+          prog.style.display = 'none';
         }
-        const { items, clues } = parseInvoiceText(text);
-        renderItems(items);
-        qs('#parseInfo').textContent = items.length ? `Fandt ${items.length} varelinjer. ${clues.join(' • ')}` : 'Fandt ingen varelinjer. Udfyld manuelt.';
-        qs('#scanInfo').textContent = 'Færdig.';
       });
     })();
   </script>
