@@ -3,142 +3,145 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Cost Price Calculator — v1.3</title>
+  <title>Cost Price Calculator — v1.5</title>
   <style>
-    /* Layout & theme */
     *, *::before, *::after { box-sizing: border-box; }
-    :root { --bg:#f6f7fb; --fg:#0f172a; --muted:#475569; --card:#ffffff; --border:#e2e8f0; }
+    :root { --bg:#f7f8fc; --fg:#0f172a; --muted:#475569; --card:#ffffff; --border:#e2e8f0; --accent:#0ea5e9; }
     html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;line-height:1.35}
-    .wrap{max-width:1100px;margin:28px auto;padding:0 16px}
+    .wrap{max-width:900px;margin:28px auto;padding:0 16px}
     .h1{font-size:28px;font-weight:700;margin:0}
     .version{color:var(--muted);font-size:12px;margin-top:4px}
-    .grid{display:grid;gap:16px}
-    @media(min-width:900px){.grid{grid-template-columns:1fr 2fr}}
     .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.03); overflow:hidden}
-    .row{display:grid;gap:12px;min-width:0}
-    @media(min-width:700px){.row{grid-template-columns:1fr 1fr}}
-    label{display:block;font-size:12px;color:var(--muted);margin:0 0 6px}
-    input[type=number], input[type=text]{width:100%;max-width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px;background:#fff;outline:none}
-    input:focus{border-color:#cbd5e1; box-shadow:0 0 0 3px rgba(148,163,184,.2)}
+    .step{margin-top:14px}
+    .step h2{font-size:18px;margin:0 0 10px}
+    .grid2{display:grid;gap:12px}
+    @media(min-width:720px){.grid2{grid-template-columns:1fr 1fr}}
+    label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px}
+    input[type=text]{width:100%;max-width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:16px;background:#fff;outline:none}
+    input[type=text]:focus{border-color:#cbd5e1; box-shadow:0 0 0 3px rgba(148,163,184,.2)}
     fieldset{border:1px solid var(--border);border-radius:12px;padding:10px;min-width:0}
     legend{color:var(--muted);font-size:12px;padding:0 6px}
-    .radio{display:flex;gap:16px;margin:4px 0 8px;flex-wrap:wrap}
-    .errors{background:#fee2e2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:10px;font-size:14px}
-    .stats{display:grid;gap:12px}
-    @media(min-width:900px){.stats{grid-template-columns:repeat(4,1fr)}}
-    .stat{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px}
-    .stat .t{font-size:12px;color:var(--muted)}
-    .stat .v{font-size:18px;font-weight:600;margin-top:4px}
-    .total{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-top:12px;gap:12px;flex-wrap:wrap}
+    .row{display:flex;gap:14px;flex-wrap:wrap}
+    .radio{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
     .hint{font-size:12px;color:var(--muted)}
-    .row-help{font-size:12px;color:var(--muted);margin-top:6px}
-    .fxline{display:flex;gap:10px;align-items:end;flex-wrap:wrap}
-    .small{font-size:12px;color:var(--muted)}
-    .btn{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--border);border-radius:10px;background:#fff;cursor:pointer}
+    .errors{background:#fee2e2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:10px;font-size:14px;margin-top:10px}
+    .results{display:grid;gap:12px;margin-top:12px}
+    @media(min-width:720px){.results{grid-template-columns:repeat(4,1fr)}}
+    .res{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px}
+    .res .t{font-size:12px;color:var(--muted)}
+    .res .v{font-size:18px;font-weight:600;margin-top:4px}
+    .total{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-top:12px;gap:12px;flex-wrap:wrap}
+    .link{color:#0369a1;cursor:pointer;text-decoration:underline}
+    .bar{margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:#fff;cursor:pointer}
     .btn:hover{background:#f8fafc}
+    details{border:1px solid var(--border);border-radius:10px;padding:10px}
+    details>summary{cursor:pointer;color:#0f172a;font-weight:600}
+    .center{display:flex;align-items:center;justify-content:center}
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1 class="h1">Cost Price Calculator</h1>
-    <div class="version">v1.3</div>
+    <div class="version">v1.5</div>
 
-    <div class="grid">
-      <!-- Valuta & told -->
-      <section class="card">
-        <h2 style="margin:0 0 10px;font-size:16px">Valuta & told</h2>
-        <div class="row">
-          <div>
-            <label for="eur">EUR → DKK <span class="small" id="eurMeta"></span></label>
-            <input id="eur" type="text" inputmode="decimal" placeholder="fx 7,45">
-            <div class="row-help">Vi henter kursen automatisk. Du kan altid rette den.</div>
-          </div>
-          <div>
-            <label for="jpy">JPY → DKK <span class="small" id="jpyMeta"></span></label>
-            <input id="jpy" type="text" inputmode="decimal" placeholder="fx 0,046">
-            <div class="row-help">Hvis din pris er i JPY, bruger vi denne kurs.</div>
-          </div>
-          <div>
-            <label for="dutyPct">Toldsats (%)</label>
-            <input id="dutyPct" type="text" inputmode="decimal" placeholder="fx 8,5">
-            <div class="row-help">Skriv sats i procent. Fx 8,5 for 8,5%.</div>
-          </div>
-          <div>
-            <label for="rounding">Vis afrundede beløb</label>
-            <div><input id="rounding" type="checkbox" checked> <span class="small">Slå fra hvis du vil se alle decimaler</span></div>
-          </div>
+    <!-- Step 1: Valuta & told -->
+    <section class="card step">
+      <h2>1. Valuta & told</h2>
+      <div class="grid2">
+        <div>
+          <label for="eur">EUR → DKK <span class="hint" id="eurMeta"></span></label>
+          <input id="eur" type="text" inputmode="decimal" value="7,45" placeholder="fx 7,45">
+          <div class="hint">Kurs hentes automatisk. Du kan altid rette den.</div>
         </div>
-        <div class="fxline" style="margin-top:10px">
-          <button class="btn" id="refreshFx">Opdatér valutakurser</button>
-          <div class="small" id="fxInfo">Kursdata: —</div>
+        <div>
+          <label for="jpy">JPY → DKK <span class="hint" id="jpyMeta"></span></label>
+          <input id="jpy" type="text" inputmode="decimal" value="0,046" placeholder="fx 0,046">
+          <div class="hint">Bruges hvis prisen står i JPY.</div>
         </div>
-      </section>
-
-      <!-- Input -->
-      <section class="card">
-        <h2 style="margin:0 0 10px;font-size:16px">Input</h2>
-        <div class="row">
-          <div>
-            <fieldset>
-              <legend>Kostpris</legend>
-              <div class="radio">
-                <label><input type="radio" name="priceCcy" value="JPY" checked> JPY</label>
-                <label><input type="radio" name="priceCcy" value="EUR"> EUR</label>
-              </div>
-              <label for="unitPrice">Kostpris pr. stk (<span id="priceCcyLabel">JPY</span>)</label>
-              <input id="unitPrice" type="text" inputmode="decimal" placeholder="Indtast prisen pr. stk her">
-            </fieldset>
-            <div>
-              <label for="discount">Rabat (DKK) pr. stk</label>
-              <input id="discount" type="text" inputmode="decimal" placeholder="Indtast rabat i kroner (kan være 0)">
-            </div>
-          </div>
-          <div>
-            <fieldset>
-              <legend>Fragt (samlet)</legend>
-              <div class="radio">
-                <label><input type="radio" name="freightCcy" value="JPY" checked> JPY</label>
-                <label><input type="radio" name="freightCcy" value="EUR"> EUR</label>
-              </div>
-              <label for="freightTotal">Fragt i alt (<span id="freightCcyLabel">JPY</span>)</label>
-              <input id="freightTotal" type="text" inputmode="decimal" placeholder="Indtast samlet fragt for hele ordren">
-            </fieldset>
-            <div>
-              <label for="qty">Antal varer</label>
-              <input id="qty" type="text" inputmode="numeric" placeholder="Hvor mange varer fordeles fragten på?">
-            </div>
-          </div>
+        <div>
+          <label for="dutyPct">Toldsats (%)</label>
+          <input id="dutyPct" type="text" inputmode="decimal" value="8,5" placeholder="fx 8,5">
+          <div class="hint">Fx 8,5 for 8,5%.</div>
         </div>
-
-        <div id="errors" class="errors" style="display:none;margin-top:12px"></div>
-      </section>
-    </div>
-
-    <!-- Stats -->
-    <section class="stats" style="margin-top:16px">
-      <div class="stat"><div class="t">Kostpris (DKK)</div><div class="v" id="costDKK">-</div></div>
-      <div class="stat"><div class="t">Kostpris m/ rabat</div><div class="v" id="netCost">-</div></div>
-      <div class="stat"><div class="t">Andel fragt pr. stk</div><div class="v" id="freightPerUnit">-</div></div>
-      <div class="stat"><div class="t">Told</div><div class="v" id="dutyAmt">-</div></div>
+      </div>
+      <div class="bar">
+        <button class="btn" id="refreshFx">Opdatér valutakurser</button>
+        <span class="hint" id="fxInfo">Kursdata: standardværdier (kan redigeres).</span>
+        <details style="margin-left:auto">
+          <summary>Avanceret</summary>
+          <div class="hint" style="margin-top:8px">
+            <label><input id="rounding" type="checkbox" checked> Vis afrundede beløb</label>
+          </div>
+        </details>
+      </div>
     </section>
 
+    <!-- Step 2: Kostpris -->
+    <section class="card step">
+      <h2>2. Kostpris</h2>
+      <div class="row">
+        <div class="radio">
+          <span class="hint">Valuta for kostpris:</span>
+          <label><input type="radio" name="priceCcy" value="JPY" checked> JPY</label>
+          <label><input type="radio" name="priceCcy" value="EUR"> EUR</label>
+        </div>
+      </div>
+      <div class="grid2" style="margin-top:8px">
+        <div>
+          <label for="unitPrice">Kostpris pr. stk (<span id="priceCcyLabel">JPY</span>)</label>
+          <input id="unitPrice" type="text" inputmode="decimal" placeholder="Indtast prisen pr. stk her">
+        </div>
+        <div>
+          <label for="discount">Rabat (DKK) pr. stk <span class="hint">(valgfrit)</span></label>
+          <input id="discount" type="text" inputmode="decimal" placeholder="Indtast rabat i kroner (kan være 0)">
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 3: Fragt -->
+    <section class="card step">
+      <h2>3. Fragt</h2>
+      <div class="row">
+        <div class="radio">
+          <span class="hint">Valuta for fragt:</span>
+          <label><input type="radio" name="freightCcy" value="JPY" checked> JPY</label>
+          <label><input type="radio" name="freightCcy" value="EUR"> EUR</label>
+        </div>
+      </div>
+      <div class="grid2" style="margin-top:8px">
+        <div>
+          <label for="freightTotal">Fragt i alt (<span id="freightCcyLabel">JPY</span>)</label>
+          <input id="freightTotal" type="text" inputmode="decimal" placeholder="Indtast samlet fragt for hele ordren">
+        </div>
+        <div>
+          <label for="qty">Antal varer</label>
+          <input id="qty" type="text" inputmode="numeric" placeholder="Hvor mange varer fordeles fragten på?">
+        </div>
+      </div>
+      <div id="helper" class="hint" style="margin-top:8px">Udfyld felterne herover for at se resultatet.</div>
+      <div id="errors" class="errors" style="display:none"></div>
+    </section>
+
+    <!-- Results -->
     <section class="total">
       <div>
         <div class="hint">Total kostpris pr. stk</div>
         <div style="font-size:28px;font-weight:700" id="total">-</div>
       </div>
-      <div class="hint" id="notes">(Told anvendt)</div>
+      <div class="hint" id="notes"></div>
     </section>
 
-    <section class="card" style="margin-top:14px">
-      <div class="h1" style="font-size:16px;margin-bottom:8px">Sådan regner vi</div>
-      <ul class="hint" style="padding-left:18px;margin:0">
-        <li>Hvis kostprisen er i <b>JPY</b>, lægger vi told på. Er den i <b>EUR</b>, lægger vi ikke told på.</li>
-        <li>Fragt fordeles <b>lige</b> på alle varer (samlet fragt ÷ antal varer).</li>
-        <li>Rabat er et <b>fast beløb</b> i DKK pr. stk.</li>
-        <li>Visning kan være afrundet, men vi regner altid med fulde decimaler.</li>
-      </ul>
+    <section class="results">
+      <div class="res"><div class="t">Kostpris (DKK)</div><div class="v" id="costDKK">-</div></div>
+      <div class="res"><div class="t">Kostpris m/ rabat</div><div class="v" id="netCost">-</div></div>
+      <div class="res"><div class="t">Andel fragt pr. stk</div><div class="v" id="freightPerUnit">-</div></div>
+      <div class="res"><div class="t">Told</div><div class="v" id="dutyAmt">-</div></div>
     </section>
+
+    <div class="center" style="margin:16px 0 40px">
+      <span class="link" id="reset">Nulstil alle felter</span>
+    </div>
   </div>
 
   <script>
@@ -149,8 +152,8 @@
       // convert "7,5" → 7.5, handle thousand separators like 37.960 or 37 960
       const toNumber = (str) => {
         if (typeof str !== 'string') str = String(str ?? '');
-        str = str.trim().replace(/\s/g, '');
-        // remove thousand dots in numbers like 37.960 or 31.308
+        str = str.trim().replace(/\\s/g, '');
+        // remove thousand dots e.g. 37.960 or 31.308
         if (/^\\d{1,3}(\\.\\d{3})+(,\\d+)?$/.test(str)) { str = str.replace(/\\./g, ''); }
         str = str.replace(',', '.');
         const n = Number(str);
@@ -166,7 +169,7 @@
       function val(id){ return toNumber(qs(id).value); }
 
       // Local storage helpers
-      const LS_KEY = 'cost_price_calc_v1_3';
+      const LS_KEY = 'cost_price_calc_v1_5';
       function save(){
         const payload = {
           eur: qs('#eur').value,
@@ -202,11 +205,17 @@
         }catch(e){}
       }
 
+      let hasInteracted = false;
+      ['#unitPrice','#freightTotal','#qty','#eur','#jpy','#dutyPct','#discount'].forEach(id=> {
+        qs(id).addEventListener('input', () => { hasInteracted = true; qs('#helper').style.display='none'; });
+      });
+      qsa('input[type=radio]').forEach(el=> el.addEventListener('change', () => { hasInteracted = true; qs('#helper').style.display='none'; }));
+
       function recalc(){
         const errors = [];
         const eur = val('#eur');
         const jpy = val('#jpy');
-        const dutyPct = val('#dutyPct'); // user enters percent
+        const dutyPct = val('#dutyPct');
         const rounding = qs('#rounding').checked;
 
         const priceCcy = qsa('input[name=priceCcy]').find(x=>x.checked).value;
@@ -220,13 +229,16 @@
         const freightTotal = val('#freightTotal');
         const qty = val('#qty');
 
-        if(!(eur>0)) errors.push('EUR→DKK skal være > 0.');
-        if(!(jpy>0)) errors.push('JPY→DKK skal være > 0.');
-        if(!(unitPrice>0)) errors.push('Angiv kostpris > 0.');
-        if(!(discount>=0)) errors.push('Rabat (DKK) kan ikke være negativ.');
-        if(!(freightTotal>=0)) errors.push('Fragt kan ikke være negativ.');
-        if(!(qty>0)) errors.push('Antal skal være > 0.');
-        if(!(dutyPct>=0)) errors.push('Toldsats kan ikke være negativ.');
+        // Validate only after some interaction
+        if (hasInteracted) {
+          if(!(eur>0)) errors.push('EUR→DKK skal være > 0.');
+          if(!(jpy>0)) errors.push('JPY→DKK skal være > 0.');
+          if(!(unitPrice>0)) errors.push('Angiv kostpris > 0.');
+          if(!(discount>=0)) errors.push('Rabat (DKK) kan ikke være negativ.');
+          if(!(freightTotal>=0)) errors.push('Fragt kan ikke være negativ.');
+          if(!(qty>0)) errors.push('Antal skal være > 0.');
+          if(!(dutyPct>=0)) errors.push('Toldsats kan ikke være negativ.');
+        }
 
         const errBox = qs('#errors');
         if(errors.length){
@@ -237,16 +249,16 @@
           errBox.innerHTML = '';
         }
 
-        if(errors.length){
+        if(!(unitPrice>0) || !(qty>0) || !(eur>0) || !(jpy>0) || !(dutyPct>=0)) {
           ['#costDKK','#netCost','#freightPerUnit','#dutyAmt','#total'].forEach(id=> qs(id).textContent='-');
-          qs('#notes').textContent = priceCcy==='JPY' ? '(Told anvendt)' : '(EU-vare – ingen told)';
+          qs('#notes').textContent = '';
           return;
         }
 
         const dutyRate = dutyPct / 100; // convert percent to decimal
 
         const costDKK = priceCcy==='JPY' ? unitPrice * jpy : unitPrice * eur;
-        const netCost = costDKK - discount;
+        const netCost = costDKK - (isNaN(discount)?0:discount);
         const freightDKKTotal = freightCcy==='JPY' ? freightTotal * jpy : freightTotal * eur;
         const freightPerUnit = freightDKKTotal / qty;
         const duty = priceCcy==='JPY' ? netCost * dutyRate : 0;
@@ -260,66 +272,77 @@
         qs('#notes').textContent = priceCcy==='JPY' ? '(Told anvendt)' : '(Ingen told)';
       }
 
-      // FX fetching (try exchangerate.host JSON; fallback to ECB XML)
+      // FX fetching with simple fallback
       async function fetchFX(){
         qs('#fxInfo').textContent = 'Henter kurser…';
         let got = false;
+        const setInfo = (msg, meta='') => { qs('#fxInfo').textContent = msg; qs('#fxInfo').dataset.meta = meta ? (msg + '|' + meta) : ''; save(); };
+
         try{
-          const u = 'https://api.exchangerate.host/latest?base=EUR&symbols=DKK,JPY';
-          const r = await fetch(u, {mode:'cors'});
+          const r = await fetch('https://api.exchangerate.host/latest?base=EUR&symbols=DKK,JPY');
           if(r.ok){
             const j = await r.json();
             const dkkPerEur = j.rates.DKK;
             const jpyPerEur = j.rates.JPY;
-            const jpyToDkk = dkkPerEur / jpyPerEur;
-            qs('#eur').value = dkkPerEur.toFixed(6).replace('.', ',');
-            qs('#jpy').value = jpyToDkk.toFixed(6).replace('.', ',');
-            const when = j.date || new Date().toISOString().slice(0,10);
-            const msg = `Kursdata: ${when} • Kilde: exchangerate.host`;
-            qs('#fxInfo').textContent = msg;
-            qs('#fxInfo').dataset.meta = msg + '|exchangerate.host';
-            got = true;
+            if(dkkPerEur && jpyPerEur){
+              const jpyToDkk = dkkPerEur / jpyPerEur;
+              qs('#eur').value = dkkPerEur.toFixed(6).replace('.', ',');
+              qs('#jpy').value = jpyToDkk.toFixed(6).replace('.', ',');
+              const when = j.date || new Date().toISOString().slice(0,10);
+              setInfo(`Kursdata: ${when} • Kilde: exchangerate.host`,'exchangerate.host');
+              got = true;
+            }
           }
         }catch(e){}
 
         if(!got){
           try{
-            const u = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml';
-            const r = await fetch(u);
+            const r = await fetch('https://open.er-api.com/v6/latest/EUR');
             if(r.ok){
-              const tx = await r.text();
-              // parse XML quickly
-              const rates = {};
-              tx.replace(/currency=['"]([A-Z]{3})['"]\\s+rate=['"]([0-9.]+)['"]/g, (_, ccy, rate) => { rates[ccy] = parseFloat(rate); });
-              const dkkPerEur = rates['DKK'];
-              const jpyPerEur = rates['JPY'];
+              const j = await r.json();
+              const dkkPerEur = j.rates.DKK;
+              const jpyPerEur = j.rates.JPY;
               if(dkkPerEur && jpyPerEur){
                 const jpyToDkk = dkkPerEur / jpyPerEur;
                 qs('#eur').value = dkkPerEur.toFixed(6).replace('.', ',');
                 qs('#jpy').value = jpyToDkk.toFixed(6).replace('.', ',');
-                const whenMatch = tx.match(/time=['"]([0-9-]+)['"]/);
-                const when = whenMatch ? whenMatch[1] : new Date().toISOString().slice(0,10);
-                const msg = `Kursdata: ${when} • Kilde: ECB`;
-                qs('#fxInfo').textContent = msg;
-                qs('#fxInfo').dataset.meta = msg + '|ECB';
+                const when = j.time_last_update_utc ? j.time_last_update_utc.split(' ').slice(0,4).join(' ') : new Date().toISOString().slice(0,10);
+                setInfo(`Kursdata: ${when} • Kilde: er-api.com`,'er-api');
                 got = true;
               }
             }
           }catch(e){}
         }
+
         if(!got){
-          qs('#fxInfo').textContent = 'Kunne ikke hente kurser (brug felterne manuelt).';
-          qs('#fxInfo').dataset.meta = '';
+          setInfo('Kunne ikke hente kurser – bruger standardværdier. Ret gerne selv.');
         }
-        save();
         recalc();
       }
 
+      // Reset
+      qs('#reset').addEventListener('click', () => {
+        localStorage.removeItem(LS_KEY);
+        // defaults
+        qs('#eur').value = '7,45';
+        qs('#jpy').value = '0,046';
+        qs('#dutyPct').value = '8,5';
+        qsa('input[name=priceCcy]').forEach(x=> x.checked = (x.value==='JPY'));
+        qsa('input[name=freightCcy]').forEach(x=> x.checked = (x.value==='JPY'));
+        qs('#unitPrice').value = '';
+        qs('#discount').value = '';
+        qs('#freightTotal').value = '';
+        qs('#qty').value = '';
+        qs('#fxInfo').textContent = 'Kursdata: standardværdier (kan redigeres).';
+        qs('#fxInfo').dataset.meta = '';
+        hasInteracted = false;
+        qs('#helper').style.display='block';
+        recalc();
+      });
+
       // Wire up
       load();
-      // sensible defaults if empty
-      if(!qs('#dutyPct').value) qs('#dutyPct').value = '8,5';
-      if(!qs('#eur').value || !qs('#jpy').value){ fetchFX(); }
+      fetchFX(); // try updating silently
       qsa('input').forEach(el=> el.addEventListener('input', ()=>{ save(); recalc(); }));
       qsa('input[type=radio][name=priceCcy],input[type=radio][name=freightCcy],#rounding').forEach(el=> el.addEventListener('change', ()=>{ save(); recalc(); }));
       qs('#refreshFx').addEventListener('click', fetchFX);
