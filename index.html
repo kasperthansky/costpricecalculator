@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Cost Price Calculator — v2.8</title>
+  <title>Cost Price Calculator — v3.2</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     :root { --bg:#f7f8fc; --fg:#0f172a; --muted:#475569; --card:#ffffff; --border:#e2e8f0; --accent:#0ea5e9; }
@@ -12,7 +12,7 @@
     .h1{font-size:28px;font-weight:700;margin:0}
     .version{color:var(--muted);font-size:12px;margin-top:4px}
     .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
-    .step{margin-top:14px}
+    .step{margin-top:16px}
     .step h2{font-size:18px;margin:0 0 10px}
     .row{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
     label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px}
@@ -24,7 +24,7 @@
     th, td{border-bottom:1px solid var(--border);padding:8px;vertical-align:top}
     th{font-size:12px;color:var(--muted);text-align:left}
     .small{font-size:12px;color:var(--muted)}
-    .statgrid{display:grid;gap:12px;margin-top:12px}
+    .statgrid{display:grid;gap:12px;margin-top:12px;margin-bottom:12px}
     @media(min-width:900px){.statgrid{grid-template-columns:repeat(4,1fr)}}
     .stat{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px}
     .stat .t{font-size:12px;color:var(--muted)}
@@ -38,15 +38,27 @@
     .copy:active{opacity:.7}
     .hidden{display:none!important}
     footer{margin:28px 0;color:var(--muted);text-align:center;font-size:12px}
-    .error{background:#fee2e2;border:1px solid #fecaca;color:#7f1d1d;border-radius:10px;padding:8px;margin-top:10px;display:none}
+
+    /* Column widths */
+    .col-index{width:32px}
+    .col-desc{width:42%}
+    .col-qty{width:90px}
+    .col-cost{width:110px}
+    .col-rrp{width:150px}
+    .col-overview{width:220px}
+    .col-shopify{width:190px}
+    .col-actions{width:44px}
+
+    /* Indstillinger grid */
+    .settings-grid{display:grid;gap:12px;margin-top:8px}
+    @media(min-width:900px){.settings-grid{grid-template-columns:1fr 1fr 1fr}}
+    .ibox{border:1px solid var(--border);border-radius:12px;padding:12px}
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1 class="h1">Cost Price Calculator</h1>
-    <div class="version">v2.8 — Told i alt i oversigt • RRP kopier • Shopify kostpris til højre</div>
-
-    <div id="err" class="error"></div>
+    <div class="version">v3.2 — Ens valutaformat (DKK, EUR, …) + bedre opdatering</div>
 
     <!-- Freight -->
     <section class="card step">
@@ -83,22 +95,22 @@
         <table id="items">
           <thead>
             <tr>
-              <th style="width:32px">#</th>
-              <th>Beskrivelse</th>
-              <th style="width:90px" id="colQty">Antal</th>
-              <th style="width:130px" id="colCost">Kostpris</th>
+              <th class="col-index">#</th>
+              <th class="col-desc">Beskrivelse</th>
+              <th class="col-qty" id="colQty">Antal</th>
+              <th class="col-cost" id="colCost">Kostpris</th>
               <th class="ccy-col" style="width:120px; display:none">Kostpris valuta</th>
-              <th style="width:150px" id="colRrpSug">Forslået RRP</th>
-              <th style="width:150px" id="colRrp">Din RRP</th>
-              <th style="width:320px">Oversigt</th>
-              <th style="width:200px">Shopify kostpris (DKK)</th>
-              <th style="width:40px"></th>
+              <th class="col-rrp" id="colRrpSug">Forslået RRP</th>
+              <th class="col-rrp" id="colRrp">Din RRP</th>
+              <th class="col-overview">Oversigt</th>
+              <th class="col-shopify">Shopify kostpris (DKK)</th>
+              <th class="col-actions"></th>
             </tr>
           </thead>
           <tbody></tbody>
         </table>
       </div>
-      <div class="small" id="itemsInfo" style="margin-top:8px">
+      <div class="small" id="itemsInfo" style="margin-top:10px">
         Fragt og evt. told er inkluderet i kostprisen (landed). “Shopify kostpris (DKK)” kan kopieres direkte til Shopify.
       </div>
     </section>
@@ -112,9 +124,9 @@
     </section>
 
     <!-- Settings -->
-    <details class="settings card">
-      <summary>Indstillinger</summary>
-      <div class="boxgrid">
+    <section class="card step">
+      <h2>Indstillinger</h2>
+      <div class="settings-grid">
         <div class="ibox">
           <div style="font-weight:600;margin-bottom:6px">Valuta</div>
           <label for="costCcy">Standard kostpris-valuta</label>
@@ -122,7 +134,6 @@
           <div style="height:8px"></div>
           <label for="rrpCcy">RRP valuta</label>
           <select id="rrpCcy"></select>
-          <div class="small" style="margin-top:6px">Kurser kan opdateres og rettes manuelt.</div>
           <div class="row" style="margin-top:8px">
             <button class="btn" id="refreshFx">Opdatér valutakurser</button>
             <span id="fxInfo" class="small">Kursdata: standardværdier.</span>
@@ -135,14 +146,13 @@
           <div style="height:8px"></div>
           <label for="dutyPct">Told (%) på varer udenfor EU</label>
           <input id="dutyPct" type="text" inputmode="decimal" value="8,5">
-          <div class="small">I praksis lægges der told på linjer, hvor kostpris-valuta er JPY.</div>
           <div style="height:8px"></div>
           <label><input id="pretty" type="checkbox" checked> Foreslå pæne priser (…99,00)</label>
-          <div class="small">Moms antaget 25% (DK).</div>
+          <div class="small">Moms antaget 25% (DK). I praksis lægges der told på linjer, hvor kostpris-valuta er JPY.</div>
         </div>
         <div class="ibox">
           <div style="font-weight:600;margin-bottom:6px">Valutakurser (1 valuta → DKK)</div>
-          <div style="overflow:auto">
+          <div style="overflow:auto; max-height:260px">
             <table id="fxTable">
               <thead><tr><th style="width:120px">Valuta</th><th style="width:200px">1 → DKK</th><th>Note</th></tr></thead>
               <tbody></tbody>
@@ -150,16 +160,12 @@
           </div>
         </div>
       </div>
-    </details>
+    </section>
 
     <footer>© 2025 | Sambeso ApS · All rights reserved</footer>
   </div>
 
   <script>
-    const errBox = document.getElementById('err');
-    const showErr = (m)=>{ errBox.textContent = m; errBox.style.display='block'; console.error(m); };
-    const clearErr = ()=>{ errBox.style.display='none'; errBox.textContent=''; };
-
     const qs = (x) => document.querySelector(x);
     const qsa = (x) => Array.from(document.querySelectorAll(x));
     function toNumber(str){
@@ -172,24 +178,27 @@
         return isFinite(n) ? n : NaN;
       }catch(e){ return NaN; }
     }
-    const fmt = (n, d=2) => isNaN(n) ? '-' : n.toLocaleString('da-DK', {minimumFractionDigits:d, maximumFractionDigits:d});
-    const fmtDKK = (n) => isNaN(n) ? '-' : n.toLocaleString('da-DK', {style:'currency', currency:'DKK'});
+
+    function fmtAmount(n, d=2){
+      return isNaN(n) ? '-' : n.toLocaleString('da-DK', {minimumFractionDigits:d, maximumFractionDigits:d});
+    }
+    const fmtCcy = (n, ccy) => isNaN(n) ? '-' : fmtAmount(n) + ' ' + ccy;
+
     function roundUpTo99(x){
       if (!isFinite(x) || x<=0) return x;
-      return Math.ceil(x/100)*100 - 1; // always up to the next 99
+      return Math.ceil(x/100)*100 - 1;
     }
 
     const defaultRates = { DKK:1, EUR:7.45, JPY:0.046, USD:6.8, GBP:8.7, SEK:0.65, NOK:0.66, CNY:0.95 };
     let rates = {...defaultRates};
 
     function buildCurrencySelect(el){ el.innerHTML = Object.keys(rates).map(ccy => `<option value="${ccy}">${ccy}</option>`).join(''); }
-
     function renderFxTable(){
       const tbody = qs('#fxTable tbody'); tbody.innerHTML = '';
       Object.keys(rates).forEach(ccy => {
         const tr = document.createElement('tr');
         tr.innerHTML = `<td><b>${ccy}</b></td>
-                        <td><input data-ccy="${ccy}" class="rate" type="text" inputmode="decimal" value="${fmt(rates[ccy],6)}"></td>
+                        <td><input data-ccy="${ccy}" class="rate" type="text" inputmode="decimal" value="${fmtAmount(rates[ccy],6)}"></td>
                         <td class="small">${ccy==='DKK'?'Danske kroner (basis)':'—'}</td>`;
         tbody.appendChild(tr);
       });
@@ -203,7 +212,7 @@
     }
 
     async function refreshFx(){
-      clearErr(); const fxInfo = qs('#fxInfo'); if(fxInfo) fxInfo.textContent = 'Henter kurser…';
+      const fxInfo = qs('#fxInfo'); if(fxInfo) fxInfo.textContent = 'Henter kurser…';
       let got = false;
       try{
         const symbols = Object.keys(rates).filter(k=>k!=='DKK').join(',');
@@ -251,31 +260,35 @@
       const idx = tbody.children.length + 1;
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${idx}</td>
-        <td><input class="desc" type="text" placeholder="Beskrivelse" value="${(prefill.description||'').replace(/"/g,'&quot;')}"></td>
-        <td class="qty-col"><input class="qty" type="text" inputmode="numeric" placeholder="0" value="${prefill.qty||''}"></td>
-        <td><input class="price" type="text" inputmode="decimal" placeholder="0,00" value="${prefill.unitPrice||''}"></td>
+        <td class="col-index">${idx}</td>
+        <td class="col-desc"><input class="desc" type="text" placeholder="Beskrivelse" value="${(prefill.description||'').replace(/"/g,'&quot;')}"></td>
+        <td class="col-qty qty-col"><input class="qty" type="text" inputmode="numeric" placeholder="0" value="${prefill.qty||''}"></td>
+        <td class="col-cost"><input class="price" type="text" inputmode="decimal" placeholder="0,00" value="${prefill.unitPrice||''}"></td>
         <td class="ccy-col" style="display:none"><select class="ccy"></select></td>
-        <td class="rrp-sug num"><span class="pill"><span class="label">Forslag</span><span class="value">-</span><button class="copy">Kopiér</button></span></td>
-        <td><div class="row" style="gap:8px"><input class="rrp" type="text" inputmode="decimal" placeholder=""><button class="copy copy-rrp">Kopiér</button></div></td>
-        <td class="margin num small">-<div class="small freightShare">Fragt pr. stk: -</div></td>
-        <td class="shopify-cost"><span class="pill"><span class="label">Shopify kostpris</span><span class="value">-</span><button class="copy">Kopiér</button></span></td>
-        <td><button class="btn del">×</button></td>`;
+        <td class="col-rrp rrp-sug num"><span class="pill"><span class="label">Forslag</span><span class="value">-</span><button class="copy">Kopiér</button></span></td>
+        <td class="col-rrp"><div class="row" style="gap:8px"><input class="rrp" type="text" inputmode="decimal" placeholder=""><button class="copy copy-rrp">Kopiér</button></div></td>
+        <td class="col-overview margin num small">-<div class="small freightShare">Fragt pr. stk: -</div></td>
+        <td class="col-shopify shopify-cost"><span class="pill"><span class="label">Shopify kostpris</span><span class="value">-</span><button class="copy">Kopiér</button></span></td>
+        <td class="col-actions"><button class="btn del">×</button></td>`;
       tbody.appendChild(tr);
       const ccySel = tr.querySelector('.ccy');
       if (ccySel){ ccySel.innerHTML = Object.keys(rates).map(ccy => `<option value="${ccy}">${ccy}</option>`).join(''); ccySel.value = prefill.ccy || qs('#costCcy').value || 'EUR'; }
       // copy handlers
+      const cleanForCopy = (s)=> (s||'').replace(/[^\d,.-]/g,'').replace(/\.$/,'').trim();
       tr.querySelector('.shopify-cost .copy').addEventListener('click', ()=>{
         const val = tr.querySelector('.shopify-cost .value')?.textContent || '';
-        if (val) { navigator.clipboard.writeText(val.replace(/[^0-9,.-]/g,'')); }
+        const clean = cleanForCopy(val);
+        if (clean) { navigator.clipboard.writeText(clean); }
       });
       tr.querySelector('.rrp-sug .copy').addEventListener('click', ()=>{
         const val = tr.querySelector('.rrp-sug .value')?.textContent || '';
-        if (val) { navigator.clipboard.writeText(val.replace(/[^0-9,.-]/g,'')); }
+        const clean = cleanForCopy(val);
+        if (clean) { navigator.clipboard.writeText(clean); }
       });
       tr.querySelector('.copy-rrp').addEventListener('click', ()=>{
         const val = tr.querySelector('.rrp')?.value || '';
-        if (val) { navigator.clipboard.writeText(val.replace(/[^0-9,.-]/g,'')); }
+        const clean = cleanForCopy(val);
+        if (clean) { navigator.clipboard.writeText(clean); }
       });
       applyQtyVisibility(tr);
       recalcRow(tr);
@@ -291,8 +304,6 @@
         description: (tr.querySelector('.desc')?.value || '').trim()
       }));
     }
-
-    const fmtCcy = (x, ccy) => isNaN(x) ? '-' : x.toLocaleString('da-DK', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ' + ccy;
 
     function totalUnitsForFreight(){
       const useLineQty = qs('#togglePerLineQty').checked;
@@ -312,70 +323,64 @@
       const per = divisor>0 ? freightDKK / divisor : 0;
       const info = qs('#freightInfo');
       if (info){
-        info.textContent = `Fordeles ligeligt på ${divisor||0} enheder → ${fmtDKK(per)} pr. stk og lægges i kostprisen (DKK).`;
+        info.textContent = `Fordeles ligeligt på ${divisor||0} enheder → ${fmtCcy(per, 'DKK')} pr. stk og lægges i kostprisen (DKK).`;
       }
       return per;
     }
 
     function recalcRow(tr){
-      try{
-        clearErr();
-        const dutyPct = toNumber(qs('#dutyPct').value) || 0;
-        const dutyRate = dutyPct/100;
-        const markup = toNumber(qs('#markup').value) || 3;
-        const pretty = qs('#pretty').checked;
-        const rrpCcy = qs('#rrpCcy').value;
+      const dutyPct = toNumber(qs('#dutyPct').value) || 0;
+      const dutyRate = dutyPct/100;
+      const markup = toNumber(qs('#markup').value) || 3;
+      const pretty = qs('#pretty').checked;
+      const rrpCcy = qs('#rrpCcy').value;
 
-        const freightPerUnit = freightPerUnitDKK();
+      const freightPerUnit = freightPerUnitDKK();
 
-        const unitPrice = toNumber(tr.querySelector('.price')?.value) || 0;
-        const ccy = (qs('#togglePerLineCcy').checked ? (tr.querySelector('.ccy')?.value||'') : qs('#costCcy').value);
-        const rrpInput = toNumber(tr.querySelector('.rrp')?.value);
+      const unitPrice = toNumber(tr.querySelector('.price')?.value) || 0;
+      const ccy = (qs('#togglePerLineCcy').checked ? (tr.querySelector('.ccy')?.value||'') : qs('#costCcy').value);
+      const rrpInput = toNumber(tr.querySelector('.rrp')?.value);
 
-        const rate = rates[ccy] || 0;
-        const unitCostDKK = unitPrice * rate;
-        const duty = (ccy==='JPY') ? unitCostDKK * dutyRate : 0;
-        const landed = unitCostDKK + duty + freightPerUnit;
+      const rate = rates[ccy] || 0;
+      const unitCostDKK = unitPrice * rate;
+      const duty = (ccy==='JPY') ? unitCostDKK * dutyRate : 0;
+      const landed = unitCostDKK + duty + freightPerUnit;
 
-        // Shopify cost pill (landed cost, DKK, ex VAT)
-        const shop = tr.querySelector('.shopify-cost .value');
-        if (shop) shop.textContent = fmtDKK(landed);
+      // Shopify cost (landed DKK)
+      const shop = tr.querySelector('.shopify-cost .value');
+      if (shop) shop.textContent = fmtCcy(landed, 'DKK');
 
-        // Freight share
-        const fs = tr.querySelector('.freightShare'); if (fs) fs.textContent = `Fragt pr. stk: ${fmtDKK(freightPerUnit)}`;
+      // Freight share
+      const fs = tr.querySelector('.freightShare'); if (fs) fs.textContent = `Fragt pr. stk: ${fmtCcy(freightPerUnit, 'DKK')}`;
 
-        // RRP suggestion in chosen currency
-        const rrpRate = rates[rrpCcy] || 1;
-        const rrpExVatDKK = landed * markup;
-        const rrpInclVatDKK = rrpExVatDKK * 1.25;
-        let rrpInclVatInCcyRaw = rrpInclVatDKK / rrpRate;
-        if (pretty) rrpInclVatInCcyRaw = roundUpTo99(rrpInclVatInCcyRaw); // round UP to next 99
-        const sugVal = tr.querySelector('.rrp-sug .value'); if (sugVal) sugVal.textContent = fmtCcy(rrpInclVatInCcyRaw, rrpCcy);
+      // RRP suggestion in chosen currency
+      const rrpRate = rates[rrpCcy] || 1;
+      const rrpExVatDKK = landed * markup;
+      const rrpInclVatDKK = rrpExVatDKK * 1.25;
+      let rrpInclVatInCcyRaw = rrpInclVatDKK / rrpRate;
+      if (pretty) rrpInclVatInCcyRaw = roundUpTo99(rrpInclVatInCcyRaw);
+      const sugVal = tr.querySelector('.rrp-sug .value'); if (sugVal) sugVal.textContent = fmtCcy(rrpInclVatInCcyRaw, rrpCcy);
 
-        const rrpInclVatInCcy = (isFinite(rrpInput)&&rrpInput>0) ? rrpInput : rrpInclVatInCcyRaw;
-        const rrpInclVatDKK2 = rrpInclVatInCcy * rrpRate;
-        const exVatCcy = rrpInclVatInCcy / 1.25;
-        const vatCcy = rrpInclVatInCcy - exVatCcy;
-        const exVatDKK = rrpInclVatDKK2 / 1.25;
-        const grossMarginDKK = exVatDKK - landed;
-        const marginPct = exVatDKK>0 ? (grossMarginDKK / exVatDKK) : NaN;
+      const rrpInclVatInCcy = (isFinite(rrpInput)&&rrpInput>0) ? rrpInput : rrpInclVatInCcyRaw;
+      const rrpInclVatDKK2 = rrpInclVatInCcy * rrpRate;
+      const exVatCcy = rrpInclVatInCcy / 1.25;
+      const vatCcy = rrpInclVatInCcy - exVatCcy;
+      const exVatDKK = rrpInclVatDKK2 / 1.25;
+      const grossMarginDKK = exVatDKK - landed;
+      const marginPct = exVatDKK>0 ? (grossMarginDKK / exVatDKK) : NaN;
 
-        // Line overview incl. duty
-        const marginEl = tr.querySelector('.margin');
-        if (marginEl){
-          marginEl.innerHTML = `
-            Kost (DKK): <b>${fmtDKK(landed)}</b><br>
-            Told (DKK): ${fmtDKK(duty)}<br>
-            Ex. moms: ${fmtCcy(exVatCcy, rrpCcy)}<br>
-            Moms: ${fmtCcy(vatCcy, rrpCcy)}<br><br>
-            Dækningsbidrag: <span class="${grossMarginDKK>=0?'ok':'danger'}"><b>${fmtDKK(grossMarginDKK)}</b> (${isNaN(marginPct)?'-':(marginPct*100).toFixed(1)}%)</span>
-          `;
-        }
-
-        updateTotals();
-      }catch(e){
-        showErr('Beregning fejlede: ' + (e?.message||e));
+      const marginEl = tr.querySelector('.margin');
+      if (marginEl){
+        marginEl.innerHTML = `
+          Kost (DKK): <b>${fmtCcy(landed, 'DKK')}</b><br>
+          Told (DKK): ${fmtCcy(duty, 'DKK')}<br>
+          Ex. moms: ${fmtCcy(exVatCcy, rrpCcy)}<br>
+          Moms: ${fmtCcy(vatCcy, rrpCcy)}<br><br>
+          Dækningsbidrag: <span class="${grossMarginDKK>=0?'ok':'danger'}"><b>${fmtCcy(grossMarginDKK, 'DKK')}</b> (${isNaN(marginPct)?'-':(marginPct*100).toFixed(1)}%)</span>
+        `;
       }
+
+      updateTotals();
     }
 
     function recalcAll(){ qsa('#items tbody tr').forEach(tr => recalcRow(tr)); updateHeaders(); }
@@ -393,6 +398,11 @@
       const a = qs('#colCost'); if (a) a.textContent = `Kostpris (${costCcy})`;
       const b = qs('#colRrpSug'); if (b) b.textContent = `Forslået RRP (${rrpCcy})`;
       const c = qs('#colRrp'); if (c) c.textContent = `Din RRP (${rrpCcy})`;
+      // ensure select options exist for any new currency keys (if user edited table)
+      qsa('.ccy').forEach(sel => {
+        const have = new Set(Array.from(sel.options).map(o=>o.value));
+        Object.keys(rates).forEach(k => { if(!have.has(k)){ const o=document.createElement('option'); o.value=k; o.textContent=k; sel.appendChild(o);} });
+      });
     }
 
     function totalsContext(){
@@ -419,43 +429,39 @@
     function updateTotals(){
       const t = totalsContext();
       const elQty = qs('#statQty'); if (elQty) elQty.textContent = t.divisor>0 ? t.divisor : (qs('#togglePerLineQty').checked ? t.sumQty : '-');
-      const elFreight = qs('#statFreightPer'); if (elFreight) elFreight.textContent = isNaN(t.per)? '-' : fmtDKK(t.per);
-      const elAvg = qs('#statAvgLanded'); if (elAvg) elAvg.textContent = (t.sumQty>0 ? fmtDKK(t.sumLanded/t.sumQty) : '-');
-      const elDuty = qs('#statDuty'); if (elDuty) elDuty.textContent = fmtDKK(t.sumDuty);
+      const elFreight = qs('#statFreightPer'); if (elFreight) elFreight.textContent = isNaN(t.per)? '-' : fmtCcy(t.per, 'DKK');
+      const elAvg = qs('#statAvgLanded'); if (elAvg) elAvg.textContent = (t.sumQty>0 ? fmtCcy(t.sumLanded/t.sumQty, 'DKK') : '-');
+      const elDuty = qs('#statDuty'); if (elDuty) elDuty.textContent = fmtCcy(t.sumDuty, 'DKK');
     }
 
     (function init(){
-      try{
-        ['#costCcy','#rrpCcy','#freightCcy'].forEach(sel => buildCurrencySelect(qs(sel)));
-        qs('#costCcy').value='JPY'; qs('#rrpCcy').value='DKK'; qs('#freightCcy').value='JPY';
-        renderFxTable();
-        addRow();
-        refreshFx();
-        // events
-        qs('#addRow').addEventListener('click', ()=> addRow());
-        ['#markup','#dutyPct','#pretty','#costCcy','#rrpCcy','#togglePerLineCcy','#freightAmount','#freightCcy','#unitsOverride','#togglePerLineQty'].forEach(id=>{
-          const el = qs(id); ['input','change','keyup'].forEach(evt => el.addEventListener(evt, ()=>{ updateHeaders(); recalcAll(); }));
-        });
-        qs('#refreshFx').addEventListener('click', refreshFx);
-        qs('#items').addEventListener('input', (e)=>{
-          const tr = e.target.closest('tr'); if(!tr) return;
-          if (e.target.matches('input')) recalcRow(tr);
-        });
-        qs('#items').addEventListener('change', (e)=>{
-          const tr = e.target.closest('tr'); if(!tr) return;
-          if (e.target.classList.contains('ccy')) recalcRow(tr);
-        });
-        qs('#items').addEventListener('click', (e)=>{
-          if (e.target.classList.contains('del')){
-            const tr = e.target.closest('tr'); tr.remove();
-            qsa('#items tbody tr').forEach((row, i)=> row.firstElementChild.textContent = i+1);
-            recalcAll();
-          }
-        });
-        updateHeaders(); recalcAll();
-      }catch(e){
-        showErr('Init-fejl: ' + (e?.message||e));
-      }
+      ['#costCcy','#rrpCcy','#freightCcy'].forEach(sel => buildCurrencySelect(qs(sel)));
+      qs('#costCcy').value='JPY'; qs('#rrpCcy').value='DKK'; qs('#freightCcy').value='JPY';
+      renderFxTable();
+      addRow();
+      refreshFx();
+      // events
+      qs('#addRow').addEventListener('click', ()=> addRow());
+      ['#markup','#dutyPct','#pretty','#costCcy','#rrpCcy','#togglePerLineCcy','#freightAmount','#freightCcy','#unitsOverride','#togglePerLineQty'].forEach(id=>{
+        const el = qs(id); ['input','change','keyup'].forEach(evt => el.addEventListener(evt, ()=>{ updateHeaders(); recalcAll(); }));
+      });
+      // items listeners
+      qs('#items').addEventListener('input', (e)=>{
+        const tr = e.target.closest('tr'); if(!tr) return;
+        if (e.target.matches('input')) recalcRow(tr);
+      });
+      qs('#items').addEventListener('change', (e)=>{
+        const tr = e.target.closest('tr'); if(!tr) return;
+        if (e.target.classList.contains('ccy')) recalcRow(tr);
+      });
+      qs('#items').addEventListener('click', (e)=>{
+        if (e.target.classList.contains('del')){
+          const tr = e.target.closest('tr'); tr.remove();
+          qsa('#items tbody tr').forEach((row, i)=> row.firstElementChild.textContent = i+1);
+          recalcAll();
+        }
+      });
+      updateHeaders(); recalcAll();
     })();
   </script>
 </body>
