@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Storefredes Superprisberegner — Web (V1.1)</title>
+  <style>
+    :root { --bg:#f6f7fb; --fg:#0f172a; --muted:#475569; --card:#ffffff; --border:#e2e8f0; }
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;line-height:1.35}
+    .wrap{max-width:1100px;margin:28px auto;padding:0 16px}
+    .h1{font-size:28px;font-weight:700;margin:0}
+    .sub{color:var(--muted);margin:6px 0 18px}
+    .grid{display:grid;gap:16px}
+    @media(min-width:900px){.grid{grid-template-columns:1fr 2fr}}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+    .row{display:grid;gap:12px}
+    @media(min-width:700px){.row{grid-template-columns:1fr 1fr}}
+    label{display:block;font-size:12px;color:var(--muted);margin:0 0 6px}
+    input[type=number], input[type=text]{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px}
+    fieldset{border:1px solid var(--border);border-radius:12px;padding:10px}
+    legend{color:var(--muted);font-size:12px;padding:0 6px}
+    .radio{display:flex;gap:16px;margin:4px 0 8px}
+    .errors{background:#fee2e2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:10px;font-size:14px}
+    .stats{display:grid;gap:12px}
+    @media(min-width:900px){.stats{grid-template-columns:repeat(4,1fr)}}
+    .stat{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px}
+    .stat .t{font-size:12px;color:var(--muted)}
+    .stat .v{font-size:18px;font-weight:600;margin-top:4px}
+    .total{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-top:12px;gap:12px;flex-wrap:wrap}
+    .switch{display:flex;align-items:center;gap:8px;margin-top:8px}
+    .foot{color:var(--muted);font-size:13px;margin-top:18px}
+    .hint{font-size:12px;color:var(--muted)}
+    .badge{display:inline-block;padding:3px 8px;border:1px solid var(--border);border-radius:999px;font-size:12px;color:#0f172a;background:#f8fafc}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:8px;flex-wrap:wrap">
+      <div>
+        <h1 class="h1">Storefredes Superprisberegner — Web</h1>
+        <p class="sub">V1.1 • Accepterer komma-tal (7,5) • Gemmer automatisk</p>
+      </div>
+      <span class="badge">Fil: index.html (drag & drop i Netlify/GitHub)</span>
+    </div>
+
+    <div class="grid">
+      <section class="card">
+        <h2 style="margin:0 0 10px;font-size:16px">Valuta & told</h2>
+        <div class="row">
+          <div>
+            <label for="eur">EUR → DKK</label>
+            <input id="eur" type="text" inputmode="decimal" value="7,5" placeholder="fx 7,45">
+          </div>
+          <div>
+            <label for="jpy">JPY → DKK</label>
+            <input id="jpy" type="text" inputmode="decimal" value="0,046" placeholder="fx 0,046">
+          </div>
+          <div>
+            <label for="duty">Toldsats (0–1)</label>
+            <input id="duty" type="text" inputmode="decimal" value="0,085" placeholder="fx 0,085">
+          </div>
+          <div class="switch">
+            <input id="rounding" type="checkbox" checked>
+            <label for="rounding">Vis afrundede beløb</label>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 style="margin:0 0 10px;font-size:16px">Input</h2>
+        <div class="row">
+          <div>
+            <fieldset>
+              <legend>Kostpris</legend>
+              <div class="radio">
+                <label><input type="radio" name="priceCcy" value="JPY" checked> JPY</label>
+                <label><input type="radio" name="priceCcy" value="EUR"> EUR</label>
+              </div>
+              <label for="unitPrice">Kostpris pr. stk (<span id="priceCcyLabel">JPY</span>)</label>
+              <input id="unitPrice" type="text" inputmode="decimal" value="37.960">
+            </fieldset>
+            <div>
+              <label for="discount">Rabat (DKK) pr. stk</label>
+              <input id="discount" type="text" inputmode="decimal" value="0">
+            </div>
+          </div>
+          <div>
+            <fieldset>
+              <legend>Fragt samlet</legend>
+              <div class="radio">
+                <label><input type="radio" name="freightCcy" value="JPY" checked> JPY</label>
+                <label><input type="radio" name="freightCcy" value="EUR"> EUR</label>
+              </div>
+              <label for="freightTotal">Fragt i alt (<span id="freightCcyLabel">JPY</span>)</label>
+              <input id="freightTotal" type="text" inputmode="decimal" value="31.308">
+            </fieldset>
+            <div>
+              <label for="qty">Antal varer (fordeling af fragt)</label>
+              <input id="qty" type="text" inputmode="numeric" value="65">
+            </div>
+          </div>
+        </div>
+
+        <div id="errors" class="errors" style="display:none;margin-top:12px"></div>
+      </section>
+    </div>
+
+    <section class="stats" style="margin-top:16px">
+      <div class="stat"><div class="t">Kostpris (DKK)</div><div class="v" id="costDKK">-</div></div>
+      <div class="stat"><div class="t">Kostpris m/ rabat</div><div class="v" id="netCost">-</div></div>
+      <div class="stat"><div class="t">Andel fragt pr. stk</div><div class="v" id="freightPerUnit">-</div></div>
+      <div class="stat"><div class="t">Told</div><div class="v" id="dutyAmt">-</div></div>
+    </section>
+
+    <section class="total">
+      <div>
+        <div class="hint">Total kostpris pr. stk</div>
+        <div style="font-size:28px;font-weight:700" id="total">-</div>
+      </div>
+      <div class="hint" id="notes">(Told anvendt)</div>
+    </section>
+
+    <section class="foot">
+      <b>Antagelser:</b> Told beregnes kun når kostpris-valuta er JPY (proxy for import udenfor EU). Fragt fordeles ligeligt pr. stk. Rabat er fast beløb i DKK pr. stk. Visning kan afrundes, beregning er altid i fuld præcision.
+    </section>
+  </div>
+
+  <script>
+    (function(){
+      const qs = (x) => document.querySelector(x);
+      const qsa = (x) => Array.from(document.querySelectorAll(x));
+
+      // accept both "7.5" and "7,5" and strip spaces
+      const toNumber = (str) => {
+        if (typeof str !== 'string') str = String(str ?? '');
+        str = str.trim().replace(/\s/g, '');
+        // allow thousand separators . or space, and decimal comma
+        // replace thousands dots in numbers like 37.960 when no comma present
+        if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(str)) {
+          str = str.replace(/\./g, '');
+        }
+        // replace decimal comma with dot
+        str = str.replace(',', '.');
+        const n = Number(str);
+        return isFinite(n) ? n : NaN;
+      };
+
+      const fmtDKK = (n, rounding) => {
+        if (n == null || isNaN(n)) return "-";
+        const v = rounding ? Math.round(n * 100) / 100 : n;
+        return v.toLocaleString('da-DK', { style: 'currency', currency: 'DKK' });
+      };
+
+      function val(id){ return toNumber(qs(id).value); }
+
+      function save(){
+        const payload = {
+          eur: qs('#eur').value,
+          jpy: qs('#jpy').value,
+          duty: qs('#duty').value,
+          rounding: qs('#rounding').checked,
+          priceCcy: qsa('input[name=priceCcy]').find(x=>x.checked).value,
+          unitPrice: qs('#unitPrice').value,
+          discount: qs('#discount').value,
+          freightCcy: qsa('input[name=freightCcy]').find(x=>x.checked).value,
+          freightTotal: qs('#freightTotal').value,
+          qty: qs('#qty').value,
+        };
+        localStorage.setItem('superpris_v1_1_html', JSON.stringify(payload));
+      }
+
+      function load(){
+        const saved = localStorage.getItem('superpris_v1_1_html');
+        if(!saved) return;
+        try{
+          const o = JSON.parse(saved);
+          if(o.eur) qs('#eur').value = o.eur;
+          if(o.jpy) qs('#jpy').value = o.jpy;
+          if(o.duty) qs('#duty').value = o.duty;
+          if(typeof o.rounding === 'boolean') qs('#rounding').checked = o.rounding;
+          if(o.priceCcy) qsa('input[name=priceCcy]').forEach(x=> x.checked = (x.value===o.priceCcy));
+          if(o.unitPrice) qs('#unitPrice').value = o.unitPrice;
+          if(o.discount) qs('#discount').value = o.discount;
+          if(o.freightCcy) qsa('input[name=freightCcy]').forEach(x=> x.checked = (x.value===o.freightCcy));
+          if(o.freightTotal) qs('#freightTotal').value = o.freightTotal;
+          if(o.qty) qs('#qty').value = o.qty;
+        }catch(e){}
+      }
+
+      function recalc(){
+        const errors = [];
+        const eur = val('#eur');
+        const jpy = val('#jpy');
+        const dutyRate = val('#duty');
+        const rounding = qs('#rounding').checked;
+
+        const priceCcy = qsa('input[name=priceCcy]').find(x=>x.checked).value;
+        const freightCcy = qsa('input[name=freightCcy]').find(x=>x.checked).value;
+
+        qs('#priceCcyLabel').textContent = priceCcy;
+        qs('#freightCcyLabel').textContent = freightCcy;
+
+        const unitPrice = val('#unitPrice');
+        const discount = val('#discount');
+        const freightTotal = val('#freightTotal');
+        const qty = val('#qty');
+
+        if(!(eur>0)) errors.push('EUR→DKK skal være > 0.');
+        if(!(jpy>0)) errors.push('JPY→DKK skal være > 0.');
+        if(!(unitPrice>0)) errors.push('Angiv kostpris > 0.');
+        if(!(discount>=0)) errors.push('Rabat (DKK) kan ikke være negativ.');
+        if(!(freightTotal>=0)) errors.push('Fragt kan ikke være negativ.');
+        if(!(qty>0)) errors.push('Antal skal være > 0.');
+        if(!(dutyRate>=0)) errors.push('Toldsats kan ikke være negativ.');
+
+        const errBox = qs('#errors');
+        if(errors.length){
+          errBox.style.display='block';
+          errBox.innerHTML = '<ul style="margin:0;padding-left:18px">' + errors.map(e=>'<li>'+e+'</li>').join('') + '</ul>';
+        } else {
+          errBox.style.display='none';
+          errBox.innerHTML = '';
+        }
+
+        if(errors.length){
+          ['#costDKK','#netCost','#freightPerUnit','#dutyAmt','#total'].forEach(id=> qs(id).textContent='-');
+          qs('#notes').textContent = priceCcy==='JPY' ? '(Told anvendt)' : '(EU-vare – ingen told)';
+          return;
+        }
+
+        const costDKK = priceCcy==='JPY' ? unitPrice * jpy : unitPrice * eur;
+        const netCost = costDKK - discount;
+        const freightDKKTotal = freightCcy==='JPY' ? freightTotal * jpy : freightTotal * eur;
+        const freightPerUnit = freightDKKTotal / qty;
+        const duty = priceCcy==='JPY' ? netCost * dutyRate : 0;
+        const totalUnitCost = netCost + freightPerUnit + duty;
+
+        qs('#costDKK').textContent = fmtDKK(costDKK, rounding);
+        qs('#netCost').textContent = fmtDKK(netCost, rounding);
+        qs('#freightPerUnit').textContent = fmtDKK(freightPerUnit, rounding);
+        qs('#dutyAmt').textContent = fmtDKK(duty, rounding);
+        qs('#total').textContent = fmtDKK(totalUnitCost, rounding);
+        qs('#notes').textContent = priceCcy==='JPY' ? '(Told anvendt)' : '(EU-vare – ingen told)';
+      }
+
+      // Wire up
+      load();
+      qsa('input').forEach(el=> el.addEventListener('input', ()=>{ save(); recalc(); }));
+      qsa('input[type=radio][name=priceCcy],input[type=radio][name=freightCcy],#rounding').forEach(el=> el.addEventListener('change', ()=>{ save(); recalc(); }));
+      recalc();
+    })();
+  </script>
+</body>
+</html>
