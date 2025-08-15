@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Cost Price Calculator — v2.3</title>
+  <title>Cost Price Calculator — v2.3.2</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     :root { --bg:#f7f8fc; --fg:#0f172a; --muted:#475569; --card:#ffffff; --border:#e2e8f0; --accent:#0ea5e9; }
@@ -14,26 +14,18 @@
     .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.03); overflow:hidden}
     .step{margin-top:14px}
     .step h2{font-size:18px;margin:0 0 10px}
-    .grid2{display:grid;gap:12px}
-    @media(min-width:900px){.grid2{grid-template-columns:1fr 1fr}}
+    .row{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
     label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px}
     input[type=text], select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px}
     input:focus, select:focus{border-color:#cbd5e1; box-shadow:0 0 0 3px rgba(148,163,184,.2); outline:none}
-    .row{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
-    .hint{font-size:12px;color:var(--muted)}
-    .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:#fff;cursor:pointer}
-    .btn:hover{background:#f8fafc}
     table{width:100%;border-collapse:collapse}
     th, td{border-bottom:1px solid var(--border);padding:8px;vertical-align:top}
     th{font-size:12px;color:var(--muted);text-align:left}
-    .right{text-align:right}
-    .nowrap{white-space:nowrap}
     .statgrid{display:grid;gap:12px;margin-top:12px}
     @media(min-width:900px){.statgrid{grid-template-columns:repeat(4,1fr)}}
     .stat{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px}
     .stat .t{font-size:12px;color:var(--muted)}
     .stat .v{font-size:18px;font-weight:600;margin-top:4px}
-    .badge{display:inline-block;background:#ecfeff;border:1px solid #a5f3fc;color:#0369a1;padding:2px 8px;border-radius:999px;font-size:12px}
     .small{font-size:12px;color:var(--muted)}
     details.settings{margin-top:12px}
     details.settings>summary{cursor:pointer;font-weight:600}
@@ -44,14 +36,17 @@
     .ok{color:#065f46}
     .danger{color:#7f1d1d}
     footer{margin:28px 0;color:var(--muted);text-align:center;font-size:12px}
+    .error{background:#fee2e2;border:1px solid #fecaca;color:#7f1d1d;border-radius:10px;padding:8px;margin-top:10px;display:none}
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1 class="h1">Cost Price Calculator</h1>
-    <div class="version">v2.3 — Varelinjer først • Fragt øverst • RRP & margin</div>
+    <div class="version">v2.3.2 — Fragt øverst • RRP & margin</div>
 
-    <!-- NEW: Freight block visible at top -->
+    <div id="err" class="error"></div>
+
+    <!-- Freight -->
     <section class="card step">
       <h2>Fragt</h2>
       <div class="row">
@@ -63,11 +58,11 @@
           <label for="freightCcy">Fragt valuta</label>
           <select id="freightCcy"></select>
         </div>
-        <div class="hint" id="freightInfo">Fordeles ligeligt pr. stk og lægges i kostprisen (DKK).</div>
+        <div class="small" id="freightInfo">Fordeles ligeligt pr. stk og lægges i kostprisen (DKK).</div>
       </div>
     </section>
 
-    <!-- Primary: Varelinjer -->
+    <!-- Items -->
     <section class="card step">
       <div class="row" style="justify-content:space-between">
         <h2>Varelinjer</h2>
@@ -98,7 +93,7 @@
       <div class="small" id="itemsInfo" style="margin-top:8px">Fragt er inkluderet i kostprisen (landed) og vises på linjeniveau.</div>
     </section>
 
-    <!-- Stats under linjer -->
+    <!-- Stats -->
     <section class="statgrid">
       <div class="stat"><div class="t">Antal i alt</div><div class="v num" id="statQty">-</div></div>
       <div class="stat"><div class="t">Fragt pr. stk (DKK)</div><div class="v num" id="statFreightPer">-</div></div>
@@ -106,7 +101,7 @@
       <div class="stat"><div class="t">DB i alt</div><div class="v num" id="statMargin">-</div></div>
     </section>
 
-    <!-- Settings collapsed -->
+    <!-- Settings -->
     <details class="settings card">
       <summary>Indstillinger</summary>
       <div class="boxgrid">
@@ -150,16 +145,22 @@
   </div>
 
   <script>
+    const errBox = document.getElementById('err');
+    function showErr(msg){ errBox.textContent = msg; errBox.style.display = 'block'; }
+    function clearErr(){ errBox.style.display = 'none'; errBox.textContent = ''; }
+
     const qs = (x) => document.querySelector(x);
     const qsa = (x) => Array.from(document.querySelectorAll(x));
-    const toNumber = (str) => {
-      if (typeof str !== 'string') str = String(str ?? '');
-      str = str.trim().replace(/\\s/g, '');
-      if (/^\\d{1,3}(\\.\\d{3})+(,\\d+)?$/.test(str)) { str = str.replace(/\\./g, ''); }
-      str = str.replace(',', '.');
-      const n = Number(str);
-      return isFinite(n) ? n : NaN;
-    };
+    function toNumber(str){
+      try{
+        if (typeof str !== 'string') str = String(str ?? '');
+        str = str.trim().replace(/\u00A0/g,''); // nbsp
+        if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(str)) str = str.replace(/\./g,'');
+        str = str.replace(',', '.');
+        const n = Number(str);
+        return isFinite(n) ? n : NaN;
+      }catch(e){ return NaN; }
+    }
     const fmt = (n, d=2) => isNaN(n) ? '-' : n.toLocaleString('da-DK', {minimumFractionDigits:d, maximumFractionDigits:d});
     const fmtDKK = (n) => isNaN(n) ? '-' : n.toLocaleString('da-DK', {style:'currency', currency:'DKK'});
     function prettyVal(x){
@@ -179,27 +180,25 @@
     }
 
     function renderFxTable(){
-      const tbody = qs('#fxTable tbody');
-      tbody.innerHTML = '';
+      const tbody = qs('#fxTable tbody'); tbody.innerHTML = '';
       Object.keys(rates).forEach(ccy => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td><b>${ccy}</b></td>
-          <td><input data-ccy="${ccy}" class="rate" type="text" inputmode="decimal" value="${fmt(rates[ccy],6)}"></td>
-          <td class="small">${ccy==='DKK'?'Danske kroner (basis)':'—'}</td>`;
+        tr.innerHTML = `<td><b>${ccy}</b></td>
+                        <td><input data-ccy="${ccy}" class="rate" type="text" inputmode="decimal" value="${fmt(rates[ccy],6)}"></td>
+                        <td class="small">${ccy==='DKK'?'Danske kroner (basis)':'—'}</td>`;
         tbody.appendChild(tr);
       });
-      tbody.addEventListener('input', (e)=>{
+      tbody.oninput = (e)=>{
         if (e.target.classList.contains('rate')){
           const ccy = e.target.dataset.ccy;
           const v = toNumber(e.target.value);
           if (isFinite(v) && v>0) { rates[ccy] = v; recalcAll(); updateHeaders(); }
         }
-      }, { once:true });
+      };
     }
 
     async function refreshFx(){
-      qs('#fxInfo').textContent = 'Henter kurser…';
+      clearErr(); qs('#fxInfo').textContent = 'Henter kurser…';
       let got = false;
       try{
         const symbols = Object.keys(rates).filter(k=>k!=='DKK').join(',');
@@ -229,7 +228,7 @@
           if(r.ok){
             const tx = await r.text();
             const ratesEur = {};
-            tx.replace(/currency=['"]([A-Z]{3})['"]\\s+rate=['"]([0-9.]+)['"]/g, (_, ccy, rate) => { ratesEur[ccy] = parseFloat(rate); });
+            tx.replace(/currency=['"]([A-Z]{3})['"]\s+rate=['"]([0-9.]+)['"]/g, (_, ccy, rate) => { ratesEur[ccy] = parseFloat(rate); });
             const dkkPerEur = ratesEur['DKK'];
             Object.keys(rates).forEach(ccy => { if(ccy==='DKK') return; const ccyPerEur = ratesEur[ccy]; if (dkkPerEur && ccyPerEur){ rates[ccy] = dkkPerEur / ccyPerEur; } });
             const when = (tx.match(/time=['"]([0-9-]+)['"]/)||[])[1] || '';
@@ -268,7 +267,6 @@
         qty: toNumber(tr.querySelector('.qty').value),
         unitPrice: toNumber(tr.querySelector('.price').value),
         ccy: (qs('#togglePerLineCcy').checked ? tr.querySelector('.ccy').value : qs('#costCcy').value),
-        applyDuty: true, // duty controlled globally by "udenfor EU"?—per your latest, we treat as import generally; could add checkbox later if needed.
         rrpInput: toNumber(tr.querySelector('.rrp').value),
         description: tr.querySelector('.desc').value.trim()
       }));
@@ -277,62 +275,63 @@
     const fmtCcy = (x, ccy) => isNaN(x) ? '-' : x.toLocaleString('da-DK', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ' + ccy;
 
     function recalcRow(tr){
-      const dutyPct = toNumber(qs('#dutyPct').value) || 0;
-      const dutyRate = dutyPct/100;
-      const markup = toNumber(qs('#markup').value) || 3;
-      const pretty = qs('#pretty').checked;
-      const rrpCcy = qs('#rrpCcy').value;
+      try{
+        clearErr();
+        const dutyPct = toNumber(qs('#dutyPct').value) || 0;
+        const dutyRate = dutyPct/100;
+        const markup = toNumber(qs('#markup').value) || 3;
+        const pretty = qs('#pretty').checked;
+        const rrpCcy = qs('#rrpCcy').value;
 
-      const rows = collectRows();
-      const totalUnits = rows.reduce((s,r)=> s + (isFinite(r.qty)?r.qty:0), 0);
+        const rows = collectRows();
+        const totalUnits = rows.reduce((s,r)=> s + (isFinite(r.qty)?r.qty:0), 0);
 
-      // Freight per unit in DKK (convert from selected freight currency)
-      const freightCcy = qs('#freightCcy').value;
-      const freightAmt = toNumber(qs('#freightAmount').value) || 0;
-      const freightDKK = (rates[freightCcy]||0) * freightAmt;
-      const freightPerUnit = totalUnits>0 ? freightDKK / totalUnits : 0;
+        const freightCcy = qs('#freightCcy').value;
+        const freightAmt = toNumber(qs('#freightAmount').value) || 0;
+        const freightDKK = (rates[freightCcy]||0) * freightAmt;
+        const freightPerUnit = totalUnits>0 ? freightDKK / totalUnits : 0;
 
-      const qty = toNumber(tr.querySelector('.qty').value);
-      const unitPrice = toNumber(tr.querySelector('.price').value);
-      const ccy = (qs('#togglePerLineCcy').checked ? tr.querySelector('.ccy').value : qs('#costCcy').value);
-      const rrpInput = toNumber(tr.querySelector('.rrp').value);
+        const qty = toNumber(tr.querySelector('.qty').value) || 0;
+        const unitPrice = toNumber(tr.querySelector('.price').value) || 0;
+        const ccy = (qs('#togglePerLineCcy').checked ? tr.querySelector('.ccy').value : qs('#costCcy').value);
+        const rrpInput = toNumber(tr.querySelector('.rrp').value);
 
-      const rate = rates[ccy] || 0;
-      const unitCostDKK = (unitPrice||0) * rate;
-      const netUnit = unitCostDKK; // no discount anymore
-      const duty = /* applyDuty */ (ccy==='JPY') ? netUnit * dutyRate : 0; // rule: told på JPY (udenfor EU proxy)
-      const landed = netUnit + duty + freightPerUnit;
+        const rate = rates[ccy] || 0;
+        const unitCostDKK = unitPrice * rate;
+        const duty = (ccy==='JPY') ? unitCostDKK * dutyRate : 0;
+        const landed = unitCostDKK + duty + freightPerUnit;
 
-      tr.querySelector('.freightShare').textContent = `Fragt pr. stk: ${fmtDKK(freightPerUnit)}`;
+        tr.querySelector('.freightShare').textContent = `Fragt pr. stk: ${fmtDKK(freightPerUnit)}`;
 
-      // RRP suggestion in chosen currency
-      const rrpRate = rates[rrpCcy] || 1;
-      const rrpExVatDKK = landed * markup;
-      const rrpInclVatDKK = rrpExVatDKK * 1.25;
-      const rrpInclVatInCcyRaw = rrpInclVatDKK / rrpRate;
-      const rrpSuggestedInCcy = pretty ? prettyVal(rrpInclVatInCcyRaw) : rrpInclVatInCcyRaw;
-      tr.querySelector('.rrp-sug').textContent = fmtCcy(rrpSuggestedInCcy, rrpCcy);
+        const rrpRate = rates[rrpCcy] || 1;
+        const rrpExVatDKK = landed * markup;
+        const rrpInclVatDKK = rrpExVatDKK * 1.25;
+        const rrpInclVatInCcyRaw = rrpInclVatDKK / rrpRate;
+        const rrpSuggestedInCcy = pretty ? prettyVal(rrpInclVatInCcyRaw) : rrpInclVatInCcyRaw;
+        tr.querySelector('.rrp-sug').textContent = fmtCcy(rrpSuggestedInCcy, rrpCcy);
 
-      const rrpInclVatInCcy = (isFinite(rrpInput)&&rrpInput>0) ? rrpInput : rrpSuggestedInCcy;
-      const rrpInclVatDKK2 = rrpInclVatInCcy * rrpRate;
-      const exVatCcy = rrpInclVatInCcy / 1.25;
-      const vatCcy = rrpInclVatInCcy - exVatCcy;
-      const exVatDKK = rrpInclVatDKK2 / 1.25;
-      const grossMarginDKK = exVatDKK - landed;
-      const marginPct = exVatDKK>0 ? (grossMarginDKK / exVatDKK) : NaN;
+        const rrpInclVatInCcy = (isFinite(rrpInput)&&rrpInput>0) ? rrpInput : rrpSuggestedInCcy;
+        const rrpInclVatDKK2 = rrpInclVatInCcy * rrpRate;
+        const exVatCcy = rrpInclVatInCcy / 1.25;
+        const vatCcy = rrpInclVatInCcy - exVatCcy;
+        const exVatDKK = rrpInclVatDKK2 / 1.25;
+        const grossMarginDKK = exVatDKK - landed;
+        const marginPct = exVatDKK>0 ? (grossMarginDKK / exVatDKK) : NaN;
 
-      tr.querySelector('.margin').innerHTML = `
-        Kost (DKK): <b>${fmtDKK(landed)}</b><br>
-        Ex. moms: ${fmtCcy(exVatCcy, rrpCcy)}<br>
-        Moms: ${fmtCcy(vatCcy, rrpCcy)}<br><br>
-        Dækningsbidrag: <span class="${grossMarginDKK>=0?'ok':'danger'}"><b>${fmtDKK(grossMarginDKK)}</b> (${isNaN(marginPct)?'-':(marginPct*100).toFixed(1)}%)</span>
-      `;
+        tr.querySelector('.margin').innerHTML = `
+          Kost (DKK): <b>${fmtDKK(landed)}</b><br>
+          Ex. moms: ${fmtCcy(exVatCcy, rrpCcy)}<br>
+          Moms: ${fmtCcy(vatCcy, rrpCcy)}<br><br>
+          Dækningsbidrag: <span class="${grossMarginDKK>=0?'ok':'danger'}"><b>${fmtDKK(grossMarginDKK)}</b> (${isNaN(marginPct)?'-':(marginPct*100).toFixed(1)}%)</span>
+        `;
 
-      updateStats();
+        updateStats();
+      }catch(e){
+        showErr('Beregning fejlede: ' + (e?.message||e));
+      }
     }
 
     function recalcAll(){ qsa('#items tbody tr').forEach(tr => recalcRow(tr)); updateHeaders(); }
-
     function updateStats(){
       const rows = collectRows();
       const totalUnits = rows.reduce((s,r)=> s + (isFinite(r.qty)?r.qty:0), 0);
@@ -343,9 +342,8 @@
       let sumLanded = 0, sumExVatDKK = 0, sumQty = 0, markup = toNumber(qs('#markup').value)||3, dutyRate = (toNumber(qs('#dutyPct').value)||0)/100;
       rows.forEach(r => {
         const unitCostDKK = (r.unitPrice||0) * (rates[r.ccy]||0);
-        const netUnit = unitCostDKK;
-        const duty = (r.ccy==='JPY') ? netUnit * dutyRate : 0;
-        const landed = netUnit + duty + (totalUnits>0 ? freightPerUnit : 0);
+        const duty = (r.ccy==='JPY') ? unitCostDKK * dutyRate : 0;
+        const landed = unitCostDKK + duty + (totalUnits>0 ? freightPerUnit : 0);
         sumLanded += landed * (r.qty||0);
         sumQty += (r.qty||0);
         const exVatDKK = (landed * markup);
@@ -369,41 +367,43 @@
     }
 
     (function init(){
-      // build selects
-      ['#costCcy','#rrpCcy','#freightCcy'].forEach(sel => buildCurrencySelect(qs(sel)));
-      qs('#costCcy').value='JPY'; qs('#rrpCcy').value='DKK'; qs('#freightCcy').value='JPY';
-      renderFxTable();
-      refreshFx();
-      // add first row
-      addRow();
-      // events
-      qs('#addRow').addEventListener('click', ()=> addRow());
-      ['#markup','#dutyPct','#pretty','#costCcy','#rrpCcy','#togglePerLineCcy','#freightAmount','#freightCcy'].forEach(id=>{
-        qs(id).addEventListener('input', recalcAll);
-        qs(id).addEventListener('change', recalcAll);
-      });
-      qs('#refreshFx').addEventListener('click', refreshFx);
-      qs('#items').addEventListener('input', (e)=>{
-        const tr = e.target.closest('tr'); if(!tr) return;
-        if (e.target.classList.contains('qty') || e.target.classList.contains('price') || e.target.classList.contains('rrp') || e.target.classList.contains('desc')) recalcRow(tr);
-      });
-      qs('#items').addEventListener('change', (e)=>{
-        const tr = e.target.closest('tr'); if(!tr) return;
-        if (e.target.classList.contains('ccy')) recalcRow(tr);
-      });
-      qs('#items').addEventListener('click', (e)=>{
-        if (e.target.classList.contains('del')){
-          const tr = e.target.closest('tr'); tr.remove();
-          qsa('#items tbody tr').forEach((row, i)=> row.firstElementChild.textContent = i+1);
-          recalcAll();
-        }
-      });
-      // toggle per-line currency column
-      qs('#togglePerLineCcy').addEventListener('change', (e)=>{
-        const show = e.target.checked;
-        qsa('.ccy-col').forEach(el => el.style.display = show ? '' : 'none');
-      });
-      updateHeaders();
+      try{
+        ['#costCcy','#rrpCcy','#freightCcy'].forEach(sel => buildCurrencySelect(qs(sel)));
+        qs('#costCcy').value='JPY'; qs('#rrpCcy').value='DKK'; qs('#freightCcy').value='JPY';
+        renderFxTable();
+        refreshFx();
+        addRow();
+        // events
+        qs('#addRow').addEventListener('click', ()=> addRow());
+        ['#markup','#dutyPct','#pretty','#costCcy','#rrpCcy','#togglePerLineCcy','#freightAmount','#freightCcy'].forEach(id=>{
+          const el = qs(id);
+          ['input','change','keyup'].forEach(evt => el.addEventListener(evt, recalcAll));
+        });
+        qs('#refreshFx').addEventListener('click', refreshFx);
+        // delegate for table inputs
+        qs('#items').addEventListener('input', (e)=>{
+          const tr = e.target.closest('tr'); if(!tr) return;
+          if (e.target.classList.contains('qty') || e.target.classList.contains('price') || e.target.classList.contains('rrp') || e.target.classList.contains('desc')) recalcRow(tr);
+        });
+        qs('#items').addEventListener('keyup', (e)=>{
+          const tr = e.target.closest('tr'); if(!tr) return;
+          if (e.target.matches('input')) recalcRow(tr);
+        });
+        qs('#items').addEventListener('change', (e)=>{
+          const tr = e.target.closest('tr'); if(!tr) return;
+          if (e.target.classList.contains('ccy')) recalcRow(tr);
+        });
+        qs('#items').addEventListener('click', (e)=>{
+          if (e.target.classList.contains('del')){
+            const tr = e.target.closest('tr'); tr.remove();
+            qsa('#items tbody tr').forEach((row, i)=> row.firstElementChild.textContent = i+1);
+            recalcAll();
+          }
+        });
+        updateHeaders(); recalcAll();
+      }catch(e){
+        showErr('Init-fejl: ' + (e?.message||e));
+      }
     })();
   </script>
 </body>
