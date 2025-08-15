@@ -3,47 +3,60 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Cost Price Calculator — v1.5</title>
+  <title>Cost Price Calculator — v2.0 (Faktura-upload prototype)</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     :root { --bg:#f7f8fc; --fg:#0f172a; --muted:#475569; --card:#ffffff; --border:#e2e8f0; --accent:#0ea5e9; }
     html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;line-height:1.35}
-    .wrap{max-width:900px;margin:28px auto;padding:0 16px}
+    .wrap{max-width:1100px;margin:28px auto;padding:0 16px}
     .h1{font-size:28px;font-weight:700;margin:0}
     .version{color:var(--muted);font-size:12px;margin-top:4px}
     .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.03); overflow:hidden}
     .step{margin-top:14px}
     .step h2{font-size:18px;margin:0 0 10px}
     .grid2{display:grid;gap:12px}
-    @media(min-width:720px){.grid2{grid-template-columns:1fr 1fr}}
+    @media(min-width:900px){.grid2{grid-template-columns:1fr 1fr}}
     label{display:block;font-size:13px;color:var(--muted);margin:0 0 6px}
-    input[type=text]{width:100%;max-width:100%;padding:12px;border:1px solid var(--border);border-radius:10px;font-size:16px;background:#fff;outline:none}
-    input[type=text]:focus{border-color:#cbd5e1; box-shadow:0 0 0 3px rgba(148,163,184,.2)}
-    fieldset{border:1px solid var(--border);border-radius:12px;padding:10px;min-width:0}
-    legend{color:var(--muted);font-size:12px;padding:0 6px}
+    input[type=text], input[type=number]{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px}
+    input:focus{border-color:#cbd5e1; box-shadow:0 0 0 3px rgba(148,163,184,.2); outline:none}
     .row{display:flex;gap:14px;flex-wrap:wrap}
     .radio{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
     .hint{font-size:12px;color:var(--muted)}
-    .errors{background:#fee2e2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:10px;font-size:14px;margin-top:10px}
-    .results{display:grid;gap:12px;margin-top:12px}
-    @media(min-width:720px){.results{grid-template-columns:repeat(4,1fr)}}
-    .res{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px}
-    .res .t{font-size:12px;color:var(--muted)}
-    .res .v{font-size:18px;font-weight:600;margin-top:4px}
-    .total{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-top:12px;gap:12px;flex-wrap:wrap}
-    .link{color:#0369a1;cursor:pointer;text-decoration:underline}
-    .bar{margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
     .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:#fff;cursor:pointer}
     .btn:hover{background:#f8fafc}
-    details{border:1px solid var(--border);border-radius:10px;padding:10px}
-    details>summary{cursor:pointer;color:#0f172a;font-weight:600}
-    .center{display:flex;align-items:center;justify-content:center}
+    .errors{background:#fee2e2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:10px;font-size:14px;margin-top:10px}
+    table{width:100%;border-collapse:collapse}
+    th, td{border-bottom:1px solid var(--border);padding:8px;vertical-align:top}
+    th{font-size:12px;color:var(--muted);text-align:left}
+    td input{width:100%}
+    .pill{display:inline-block;background:#ecfeff;border:1px solid #a5f3fc;color:#0369a1;padding:2px 8px;border-radius:999px;font-size:12px}
+    .right{text-align:right}
+    .total{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-top:12px;gap:12px;flex-wrap:wrap}
+    .thumb{max-height:180px;border:1px solid var(--border);border-radius:10px}
+    .center{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    .small{font-size:12px;color:var(--muted)}
   </style>
+  <!-- PDF.js & Tesseract from CDNs -->
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
 </head>
 <body>
   <div class="wrap">
     <h1 class="h1">Cost Price Calculator</h1>
-    <div class="version">v1.5</div>
+    <div class="version">v2.0 — Faktura-upload (prototype)</div>
+
+    <!-- Step 0: Upload -->
+    <section class="card step">
+      <h2>0. Upload faktura</h2>
+      <div class="center">
+        <input id="file" type="file" accept=".pdf,image/*">
+        <button id="scan" class="btn" disabled>Scan faktura</button>
+        <span id="scanInfo" class="small"></span>
+      </div>
+      <div id="preview" style="margin-top:10px"></div>
+      <div class="hint" style="margin-top:8px">PDF eller billede. Vi finder så meget som muligt automatisk. Du kan altid rette det, vi ikke gætter korrekt.</div>
+    </section>
 
     <!-- Step 1: Valuta & told -->
     <section class="card step">
@@ -65,32 +78,29 @@
           <div class="hint">Fx 8,5 for 8,5%.</div>
         </div>
       </div>
-      <div class="bar">
-        <button class="btn" id="refreshFx">Opdatér valutakurser</button>
-        <span class="hint" id="fxInfo">Kursdata: standardværdier (kan redigeres).</span>
-        <details style="margin-left:auto">
-          <summary>Avanceret</summary>
-          <div class="hint" style="margin-top:8px">
-            <label><input id="rounding" type="checkbox" checked> Vis afrundede beløb</label>
-          </div>
-        </details>
-      </div>
-    </section>
-
-    <!-- Step 2: Kostpris -->
-    <section class="card step">
-      <h2>2. Kostpris</h2>
-      <div class="row">
+      <div class="row" style="margin-top:8px">
         <div class="radio">
-          <span class="hint">Valuta for kostpris:</span>
+          <span class="hint">Kostpris-valuta:</span>
           <label><input type="radio" name="priceCcy" value="JPY" checked> JPY</label>
           <label><input type="radio" name="priceCcy" value="EUR"> EUR</label>
         </div>
+        <div class="radio">
+          <span class="hint">Fragt-valuta:</span>
+          <label><input type="radio" name="freightCcy" value="JPY" checked> JPY</label>
+          <label><input type="radio" name="freightCcy" value="EUR"> EUR</label>
+        </div>
+        <button class="btn" id="refreshFx">Opdatér valutakurser</button>
+        <span class="small" id="fxInfo">Kursdata: standardværdier (kan redigeres).</span>
       </div>
-      <div class="grid2" style="margin-top:8px">
+    </section>
+
+    <!-- Step 2: Fragt & rabat -->
+    <section class="card step">
+      <h2>2. Fragt & rabat</h2>
+      <div class="grid2">
         <div>
-          <label for="unitPrice">Kostpris pr. stk (<span id="priceCcyLabel">JPY</span>)</label>
-          <input id="unitPrice" type="text" inputmode="decimal" placeholder="Indtast prisen pr. stk her">
+          <label for="freightTotal">Fragt i alt</label>
+          <input id="freightTotal" type="text" inputmode="decimal" placeholder="Indtast samlet fragt for hele ordren">
         </div>
         <div>
           <label for="discount">Rabat (DKK) pr. stk <span class="hint">(valgfrit)</span></label>
@@ -99,254 +109,272 @@
       </div>
     </section>
 
-    <!-- Step 3: Fragt -->
+    <!-- Step 3: Varelinjer (fra faktura) -->
     <section class="card step">
-      <h2>3. Fragt</h2>
-      <div class="row">
-        <div class="radio">
-          <span class="hint">Valuta for fragt:</span>
-          <label><input type="radio" name="freightCcy" value="JPY" checked> JPY</label>
-          <label><input type="radio" name="freightCcy" value="EUR"> EUR</label>
-        </div>
+      <h2>3. Varelinjer</h2>
+      <div class="hint">Vi forsøger at finde antal (pcs), enhedspris og linjebeløb. Du kan altid redigere. Beskrivelse kan stå på flere linjer.</div>
+      <div style="overflow:auto;margin-top:8px">
+        <table id="items">
+          <thead>
+            <tr>
+              <th style="width:36px">#</th>
+              <th>Beskrivelse</th>
+              <th style="width:90px">Antal</th>
+              <th style="width:140px">Enhedspris</th>
+              <th style="width:140px">Beløb</th>
+              <th style="width:120px">Kilde</th>
+            </tr>
+          </thead>
+          <tbody>
+          </tbody>
+        </table>
       </div>
-      <div class="grid2" style="margin-top:8px">
-        <div>
-          <label for="freightTotal">Fragt i alt (<span id="freightCcyLabel">JPY</span>)</label>
-          <input id="freightTotal" type="text" inputmode="decimal" placeholder="Indtast samlet fragt for hele ordren">
-        </div>
-        <div>
-          <label for="qty">Antal varer</label>
-          <input id="qty" type="text" inputmode="numeric" placeholder="Hvor mange varer fordeles fragten på?">
-        </div>
-      </div>
-      <div id="helper" class="hint" style="margin-top:8px">Udfyld felterne herover for at se resultatet.</div>
-      <div id="errors" class="errors" style="display:none"></div>
+      <div id="parseInfo" class="small" style="margin-top:8px"></div>
     </section>
 
-    <!-- Results -->
+    <!-- Resultater -->
     <section class="total">
       <div>
-        <div class="hint">Total kostpris pr. stk</div>
+        <div class="hint">Total kostpris pr. stk (efter rabat, fragtandel og told)</div>
         <div style="font-size:28px;font-weight:700" id="total">-</div>
       </div>
       <div class="hint" id="notes"></div>
     </section>
 
-    <section class="results">
-      <div class="res"><div class="t">Kostpris (DKK)</div><div class="v" id="costDKK">-</div></div>
-      <div class="res"><div class="t">Kostpris m/ rabat</div><div class="v" id="netCost">-</div></div>
-      <div class="res"><div class="t">Andel fragt pr. stk</div><div class="v" id="freightPerUnit">-</div></div>
-      <div class="res"><div class="t">Told</div><div class="v" id="dutyAmt">-</div></div>
+    <section class="card step">
+      <div class="grid2">
+        <div class="card" style="border:0;padding:0">
+          <div class="h1" style="font-size:16px;margin-bottom:8px">Fordeling</div>
+          <div class="small">Fragt fordeles ligeligt pr. stk på tværs af alle linjer.</div>
+          <div class="small">Told lægges kun på varer i JPY (som antages import udenfor EU).</div>
+        </div>
+        <div class="card" style="border:0;padding:0">
+          <div class="h1" style="font-size:16px;margin-bottom:8px">Opsummering</div>
+          <div class="small" id="summary"></div>
+        </div>
+      </div>
     </section>
-
-    <div class="center" style="margin:16px 0 40px">
-      <span class="link" id="reset">Nulstil alle felter</span>
-    </div>
   </div>
 
   <script>
-    (function(){
-      const qs = (x) => document.querySelector(x);
-      const qsa = (x) => Array.from(document.querySelectorAll(x));
+    // PDF.js worker config
+    if (window['pdfjsLib']) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.js';
+    }
 
-      // convert "7,5" → 7.5, handle thousand separators like 37.960 or 37 960
-      const toNumber = (str) => {
-        if (typeof str !== 'string') str = String(str ?? '');
-        str = str.trim().replace(/\\s/g, '');
-        // remove thousand dots e.g. 37.960 or 31.308
-        if (/^\\d{1,3}(\\.\\d{3})+(,\\d+)?$/.test(str)) { str = str.replace(/\\./g, ''); }
-        str = str.replace(',', '.');
-        const n = Number(str);
-        return isFinite(n) ? n : NaN;
-      };
+    const qs = (x) => document.querySelector(x);
+    const qsa = (x) => Array.from(document.querySelectorAll(x));
 
-      const fmtDKK = (n, rounding) => {
-        if (n == null || isNaN(n)) return "-";
-        const v = rounding ? Math.round(n * 100) / 100 : n;
-        return v.toLocaleString('da-DK', { style: 'currency', currency: 'DKK' });
-      };
+    // number parser: supports "37.960" (thousands) and "7,5" (comma decimal)
+    const toNumber = (str) => {
+      if (typeof str !== 'string') str = String(str ?? '');
+      str = str.replace(/¥/g,'').trim().replace(/\\s/g, '');
+      if (/^\\d{1,3}(\\.\\d{3})+(,\\d+)?$/.test(str)) { str = str.replace(/\\./g, ''); }
+      str = str.replace(',', '.');
+      const n = Number(str);
+      return isFinite(n) ? n : NaN;
+    };
+    const fromNumberDKK = (n, rounding=true) => {
+      if (n==null || isNaN(n)) return '-';
+      const v = rounding ? Math.round(n*100)/100 : n;
+      return v.toLocaleString('da-DK', {style:'currency', currency:'DKK'});
+    };
 
-      function val(id){ return toNumber(qs(id).value); }
+    // FX fetching (simple; optional)
+    async function fetchFX(){
+      qs('#fxInfo').textContent = 'Henter kurser…';
+      let got = false;
+      const setInfo = (msg, meta='') => { qs('#fxInfo').textContent = msg; qs('#fxInfo').dataset.meta = meta ? (msg + '|' + meta) : ''; };
 
-      // Local storage helpers
-      const LS_KEY = 'cost_price_calc_v1_5';
-      function save(){
-        const payload = {
-          eur: qs('#eur').value,
-          jpy: qs('#jpy').value,
-          dutyPct: qs('#dutyPct').value,
-          rounding: qs('#rounding').checked,
-          priceCcy: qsa('input[name=priceCcy]').find(x=>x.checked).value,
-          unitPrice: qs('#unitPrice').value,
-          discount: qs('#discount').value,
-          freightCcy: qsa('input[name=freightCcy]').find(x=>x.checked).value,
-          freightTotal: qs('#freightTotal').value,
-          qty: qs('#qty').value,
-          fxMeta: qs('#fxInfo').dataset.meta || ''
-        };
-        localStorage.setItem(LS_KEY, JSON.stringify(payload));
-      }
-      function load(){
-        const saved = localStorage.getItem(LS_KEY);
-        if(!saved) return;
-        try{
-          const o = JSON.parse(saved);
-          if(o.eur) qs('#eur').value = o.eur;
-          if(o.jpy) qs('#jpy').value = o.jpy;
-          if(o.dutyPct) qs('#dutyPct').value = o.dutyPct;
-          if(typeof o.rounding === 'boolean') qs('#rounding').checked = o.rounding;
-          if(o.priceCcy) qsa('input[name=priceCcy]').forEach(x=> x.checked = (x.value===o.priceCcy));
-          if(o.unitPrice) qs('#unitPrice').value = o.unitPrice;
-          if(o.discount) qs('#discount').value = o.discount;
-          if(o.freightCcy) qsa('input[name=freightCcy]').forEach(x=> x.checked = (x.value===o.freightCcy));
-          if(o.freightTotal) qs('#freightTotal').value = o.freightTotal;
-          if(o.qty) qs('#qty').value = o.qty;
-          if(o.fxMeta){ const m = o.fxMeta.split('|'); if(m[0]) qs('#fxInfo').textContent = m[0]; if(m[1]) qs('#fxInfo').dataset.meta = o.fxMeta; }
-        }catch(e){}
-      }
-
-      let hasInteracted = false;
-      ['#unitPrice','#freightTotal','#qty','#eur','#jpy','#dutyPct','#discount'].forEach(id=> {
-        qs(id).addEventListener('input', () => { hasInteracted = true; qs('#helper').style.display='none'; });
-      });
-      qsa('input[type=radio]').forEach(el=> el.addEventListener('change', () => { hasInteracted = true; qs('#helper').style.display='none'; }));
-
-      function recalc(){
-        const errors = [];
-        const eur = val('#eur');
-        const jpy = val('#jpy');
-        const dutyPct = val('#dutyPct');
-        const rounding = qs('#rounding').checked;
-
-        const priceCcy = qsa('input[name=priceCcy]').find(x=>x.checked).value;
-        const freightCcy = qsa('input[name=freightCcy]').find(x=>x.checked).value;
-
-        qs('#priceCcyLabel').textContent = priceCcy;
-        qs('#freightCcyLabel').textContent = freightCcy;
-
-        const unitPrice = val('#unitPrice');
-        const discount = val('#discount');
-        const freightTotal = val('#freightTotal');
-        const qty = val('#qty');
-
-        // Validate only after some interaction
-        if (hasInteracted) {
-          if(!(eur>0)) errors.push('EUR→DKK skal være > 0.');
-          if(!(jpy>0)) errors.push('JPY→DKK skal være > 0.');
-          if(!(unitPrice>0)) errors.push('Angiv kostpris > 0.');
-          if(!(discount>=0)) errors.push('Rabat (DKK) kan ikke være negativ.');
-          if(!(freightTotal>=0)) errors.push('Fragt kan ikke være negativ.');
-          if(!(qty>0)) errors.push('Antal skal være > 0.');
-          if(!(dutyPct>=0)) errors.push('Toldsats kan ikke være negativ.');
+      try{
+        const r = await fetch('https://api.exchangerate.host/latest?base=EUR&symbols=DKK,JPY');
+        if(r.ok){
+          const j = await r.json();
+          const dkkPerEur = j.rates.DKK;
+          const jpyPerEur = j.rates.JPY;
+          if(dkkPerEur && jpyPerEur){
+            const jpyToDkk = dkkPerEur / jpyPerEur;
+            qs('#eur').value = dkkPerEur.toFixed(6).replace('.', ',');
+            qs('#jpy').value = jpyToDkk.toFixed(6).replace('.', ',');
+            const when = j.date || new Date().toISOString().slice(0,10);
+            setInfo(`Kursdata: ${when} • Kilde: exchangerate.host`,'exchangerate.host');
+            got = true;
+          }
         }
+      }catch(e){}
+      if(!got) setInfo('Kursdata: standardværdier (kan redigeres).');
+    }
 
-        const errBox = qs('#errors');
-        if(errors.length){
-          errBox.style.display='block';
-          errBox.innerHTML = '<ul style="margin:0;padding-left:18px">' + errors.map(e=>'<li>'+e+'</li>').join('') + '</ul>';
-        } else {
-          errBox.style.display='none';
-          errBox.innerHTML = '';
-        }
+    // Parse invoice text → items
+    function parseInvoiceText(txt){
+      const lines = txt.split(/\\r?\\n/).map(s => s.trim()).filter(Boolean);
+      const items = [];
+      const clues = [];
 
-        if(!(unitPrice>0) || !(qty>0) || !(eur>0) || !(jpy>0) || !(dutyPct>=0)) {
-          ['#costDKK','#netCost','#freightPerUnit','#dutyAmt','#total'].forEach(id=> qs(id).textContent='-');
-          qs('#notes').textContent = '';
-          return;
-        }
+      // Try to detect currency (JPY dominates sample)
+      const hasYen = /¥/.test(txt) || /JPY/.test(txt);
+      if (hasYen) clues.push('Valuta fundet: JPY (¥/JPY nævnt)');
+      const hasEur = /\\bEUR\\b/.test(txt);
+      if (hasEur) clues.push('EUR nævnt på faktura');
 
-        const dutyRate = dutyPct / 100; // convert percent to decimal
-
-        const costDKK = priceCcy==='JPY' ? unitPrice * jpy : unitPrice * eur;
-        const netCost = costDKK - (isNaN(discount)?0:discount);
-        const freightDKKTotal = freightCcy==='JPY' ? freightTotal * jpy : freightTotal * eur;
-        const freightPerUnit = freightDKKTotal / qty;
-        const duty = priceCcy==='JPY' ? netCost * dutyRate : 0;
-        const totalUnitCost = netCost + freightPerUnit + duty;
-
-        qs('#costDKK').textContent = fmtDKK(costDKK, rounding);
-        qs('#netCost').textContent = fmtDKK(netCost, rounding);
-        qs('#freightPerUnit').textContent = fmtDKK(freightPerUnit, rounding);
-        qs('#dutyAmt').textContent = fmtDKK(duty, rounding);
-        qs('#total').textContent = fmtDKK(totalUnitCost, rounding);
-        qs('#notes').textContent = priceCcy==='JPY' ? '(Told anvendt)' : '(Ingen told)';
-      }
-
-      // FX fetching with simple fallback
-      async function fetchFX(){
-        qs('#fxInfo').textContent = 'Henter kurser…';
-        let got = false;
-        const setInfo = (msg, meta='') => { qs('#fxInfo').textContent = msg; qs('#fxInfo').dataset.meta = meta ? (msg + '|' + meta) : ''; save(); };
-
-        try{
-          const r = await fetch('https://api.exchangerate.host/latest?base=EUR&symbols=DKK,JPY');
-          if(r.ok){
-            const j = await r.json();
-            const dkkPerEur = j.rates.DKK;
-            const jpyPerEur = j.rates.JPY;
-            if(dkkPerEur && jpyPerEur){
-              const jpyToDkk = dkkPerEur / jpyPerEur;
-              qs('#eur').value = dkkPerEur.toFixed(6).replace('.', ',');
-              qs('#jpy').value = jpyToDkk.toFixed(6).replace('.', ',');
-              const when = j.date || new Date().toISOString().slice(0,10);
-              setInfo(`Kursdata: ${when} • Kilde: exchangerate.host`,'exchangerate.host');
-              got = true;
+      // Heuristic: lines like "10 pcs ¥17,800 ¥178,000" or "10 pcs ¥14,260 ¥142,600"
+      const itemRegex = /(\\d+)\\s*pcs?\\s*¥?([\\d,.]+)\\s*¥?([\\d,.]+)/i;
+      for (let i=0;i<lines.length;i++){
+        const m = lines[i].match(itemRegex);
+        if (m){
+          // Find description above current line (look back up to 3 non-empty lines)
+          let desc = '';
+          for (let j=i-1; j>=Math.max(0,i-3); j--){
+            if (lines[j] && !itemRegex.test(lines[j]) && !/pcs?\\s*$/i.test(lines[j])){
+              desc = lines[j] + (desc? (' ' + desc):'');
             }
           }
-        }catch(e){}
-
-        if(!got){
-          try{
-            const r = await fetch('https://open.er-api.com/v6/latest/EUR');
-            if(r.ok){
-              const j = await r.json();
-              const dkkPerEur = j.rates.DKK;
-              const jpyPerEur = j.rates.JPY;
-              if(dkkPerEur && jpyPerEur){
-                const jpyToDkk = dkkPerEur / jpyPerEur;
-                qs('#eur').value = dkkPerEur.toFixed(6).replace('.', ',');
-                qs('#jpy').value = jpyToDkk.toFixed(6).replace('.', ',');
-                const when = j.time_last_update_utc ? j.time_last_update_utc.split(' ').slice(0,4).join(' ') : new Date().toISOString().slice(0,10);
-                setInfo(`Kursdata: ${when} • Kilde: er-api.com`,'er-api');
-                got = true;
-              }
-            }
-          }catch(e){}
+          const qty = parseInt(m[1],10);
+          const unit = toNumber(m[2]);
+          const amount = toNumber(m[3]);
+          items.push({ description: desc || '(Ukendt vare)', qty, unitPrice: unit, amount, source: lines[i] });
         }
-
-        if(!got){
-          setInfo('Kunne ikke hente kurser – bruger standardværdier. Ret gerne selv.');
-        }
-        recalc();
       }
+      return { items, clues };
+    }
 
-      // Reset
-      qs('#reset').addEventListener('click', () => {
-        localStorage.removeItem(LS_KEY);
-        // defaults
-        qs('#eur').value = '7,45';
-        qs('#jpy').value = '0,046';
-        qs('#dutyPct').value = '8,5';
-        qsa('input[name=priceCcy]').forEach(x=> x.checked = (x.value==='JPY'));
-        qsa('input[name=freightCcy]').forEach(x=> x.checked = (x.value==='JPY'));
-        qs('#unitPrice').value = '';
-        qs('#discount').value = '';
-        qs('#freightTotal').value = '';
-        qs('#qty').value = '';
-        qs('#fxInfo').textContent = 'Kursdata: standardværdier (kan redigeres).';
-        qs('#fxInfo').dataset.meta = '';
-        hasInteracted = false;
-        qs('#helper').style.display='block';
-        recalc();
+    // Render items into table
+    function renderItems(items){
+      const tbody = qs('#items tbody');
+      tbody.innerHTML = '';
+      items.forEach((it, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${idx+1}</td>
+          <td><input type="text" value="${(it.description||'').replace(/"/g,'&quot;')}"></td>
+          <td class="right"><input type="text" value="${it.qty||''}" inputmode="numeric"></td>
+          <td class="right"><input type="text" value="${it.unitPrice!=null?it.unitPrice:''}" inputmode="decimal"></td>
+          <td class="right"><input type="text" value="${it.amount!=null?it.amount:''}" inputmode="decimal"></td>
+          <td><span class="pill">Auto</span></td>
+        `;
+        tbody.appendChild(tr);
       });
-
-      // Wire up
-      load();
-      fetchFX(); // try updating silently
-      qsa('input').forEach(el=> el.addEventListener('input', ()=>{ save(); recalc(); }));
-      qsa('input[type=radio][name=priceCcy],input[type=radio][name=freightCcy],#rounding').forEach(el=> el.addEventListener('change', ()=>{ save(); recalc(); }));
-      qs('#refreshFx').addEventListener('click', fetchFX);
       recalc();
+    }
+
+    function collectItems(){
+      const rows = qsa('#items tbody tr');
+      const items = [];
+      rows.forEach(r => {
+        const tds = r.querySelectorAll('td');
+        const description = tds[1].querySelector('input').value.trim();
+        const qty = toNumber(tds[2].querySelector('input').value);
+        const unitPrice = toNumber(tds[3].querySelector('input').value);
+        const amount = toNumber(tds[4].querySelector('input').value);
+        if (!isNaN(qty) && qty>0 && !isNaN(unitPrice)){
+          items.push({ description, qty, unitPrice, amount });
+        }
+      });
+      return items;
+    }
+
+    function recalc(){
+      const eur = toNumber(qs('#eur').value);
+      const jpy = toNumber(qs('#jpy').value);
+      const dutyPct = toNumber(qs('#dutyPct').value);
+      const dutyRate = (isFinite(dutyPct) && dutyPct>=0) ? dutyPct/100 : 0;
+      const priceCcy = qsa('input[name=priceCcy]').find(x=>x.checked).value;
+      const freightCcy = qsa('input[name=freightCcy]').find(x=>x.checked).value;
+      const discount = toNumber(qs('#discount').value) || 0;
+      const freightTotal = toNumber(qs('#freightTotal').value) || 0;
+
+      const items = collectItems();
+      const totalUnits = items.reduce((s,it)=> s + (isFinite(it.qty)?it.qty:0), 0);
+      const freightDKKTotal = freightCcy==='JPY' ? freightTotal * jpy : freightTotal * eur;
+      const freightPerUnit = totalUnits>0 ? (freightDKKTotal / totalUnits) : 0;
+
+      let sumInfo = [];
+      let totalPerUnitWeighted = 0;
+      items.forEach(it => {
+        const unitCostDKK = (priceCcy==='JPY' ? it.unitPrice * jpy : it.unitPrice * eur);
+        const netUnit = unitCostDKK - discount;
+        const duty = (priceCcy==='JPY') ? netUnit * dutyRate : 0;
+        const totalUnit = netUnit + freightPerUnit + duty;
+        totalPerUnitWeighted += totalUnit * it.qty;
+      });
+      const avgPerUnit = totalUnits>0 ? (totalPerUnitWeighted / totalUnits) : NaN;
+
+      qs('#costDKK').textContent = '-'; // not meaningful for multi-line; keep detailed calc per line in future
+      qs('#netCost').textContent = '-';
+      qs('#freightPerUnit').textContent = isNaN(freightPerUnit)? '-' : fromNumberDKK(freightPerUnit);
+      qs('#dutyAmt').textContent = '-';
+      qs('#total').textContent = isNaN(avgPerUnit) ? '-' : fromNumberDKK(avgPerUnit);
+      qs('#notes').textContent = priceCcy==='JPY' ? '(Told anvendt på JPY-varer)' : '(Ingen told)';
+      qs('#summary').textContent = totalUnits>0 ? `Antal varer i alt: ${totalUnits}. Fragt pr. stk: ${fromNumberDKK(freightPerUnit)}.` : 'Tilføj antal for at beregne fragt pr. stk.';
+    }
+
+    // Wire UI
+    (function init(){
+      // FX
+      fetchFX();
+      qs('#refreshFx').addEventListener('click', fetchFX);
+      // Recalc on edits
+      ['#eur','#jpy','#dutyPct','#discount','#freightTotal'].forEach(id => {
+        qs(id).addEventListener('input', recalc);
+      });
+      qsa('input[name=priceCcy],input[name=freightCcy]').forEach(el => el.addEventListener('change', recalc));
+      // Items listeners (delegate)
+      qs('#items').addEventListener('input', (e)=>{
+        if (e.target.tagName==='INPUT') recalc();
+      });
+      // Upload
+      const fileInput = qs('#file');
+      const btnScan = qs('#scan');
+      fileInput.addEventListener('change', () => {
+        qs('#scanInfo').textContent = fileInput.files?.[0]?.name || '';
+        btnScan.disabled = !fileInput.files?.length;
+        // quick preview
+        const f = fileInput.files?.[0];
+        const prev = qs('#preview');
+        prev.innerHTML='';
+        if (f && f.type.startsWith('image/')){
+          const img = document.createElement('img');
+          img.className='thumb';
+          img.src = URL.createObjectURL(f);
+          prev.appendChild(img);
+        } else if (f && f.type==='application/pdf'){
+          const span = document.createElement('div');
+          span.className = 'small';
+          span.textContent = 'PDF uploadet: ' + f.name;
+          prev.appendChild(span);
+        }
+      });
+      btnScan.addEventListener('click', async () => {
+        const f = fileInput.files?.[0];
+        if (!f) return;
+        qs('#scanInfo').textContent = 'Scanner…';
+        let text = '';
+        try{
+          if (f.type === 'application/pdf'){
+            const arrayBuf = await f.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({data: arrayBuf}).promise;
+            for (let p=1; p<=pdf.numPages; p++){
+              const page = await pdf.getPage(p);
+              const content = await page.getTextContent();
+              const strs = content.items.map(it => it.str);
+              text += strs.join('\\n') + '\\n';
+            }
+          } else if (f.type.startsWith('image/')){
+            const { data } = await Tesseract.recognize(f, 'eng', { tessedit_char_whitelist: '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ¥,.-()/% ' });
+            text = data.text;
+          } else {
+            qs('#scanInfo').textContent = 'Ukendt filtype.';
+            return;
+          }
+        } catch (e){
+          qs('#scanInfo').textContent = 'Fejl ved læsning: ' + (e?.message||e);
+          return;
+        }
+        const { items, clues } = parseInvoiceText(text);
+        renderItems(items);
+        qs('#parseInfo').textContent = items.length ? `Fandt ${items.length} varelinjer. ${clues.join(' • ')}` : 'Fandt ingen varelinjer. Udfyld manuelt.';
+        qs('#scanInfo').textContent = 'Færdig.';
+      });
     })();
   </script>
 </body>
